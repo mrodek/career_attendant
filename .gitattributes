@@ -1,0 +1,14 @@
+# Normalize line endings: keep LF in repo; enforce LF on checkout for text files
+* text=auto eol=lf
+
+# Common text files
+*.py text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+Dockerfile text eol=lf
+
+data/* -text
