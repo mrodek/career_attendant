@@ -1,5 +1,6 @@
 // Get the current tab's URL when popup opens
 let userProfile = { email: '', id: '' };
+const API_URL = 'http://localhost:8080/entries';
 document.addEventListener('DOMContentLoaded', () => {
   // Get current tab URL
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -108,7 +109,40 @@ document.getElementById('captureForm').addEventListener('submit', (e) => {
 
   // Save to Chrome storage
   saveEntry(formData);
+
+  // Also post to API backend (fire-and-forget; UI success is based on local save)
+  postToApi(formData);
 });
+
+// Post entry to API backend
+function postToApi(entry) {
+  try {
+    fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': 'career_attendant_dev_987',
+      },
+      body: JSON.stringify(entry),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          console.error('API POST failed with status', response.status);
+        }
+        return response.json().catch(() => null);
+      })
+      .then((data) => {
+        if (data) {
+          console.log('API entry created:', data);
+        }
+      })
+      .catch((err) => {
+        console.error('Error posting to API:', err);
+      });
+  } catch (err) {
+    console.error('Unexpected error posting to API:', err);
+  }
+}
 
 // Save entry to local storage
 function saveEntry(entry) {

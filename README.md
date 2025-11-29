@@ -101,3 +101,16 @@ Invoke-RestMethod -Method Get -Uri 'http://localhost:8080/entries?page=1&pageSiz
 ## Notes
 - CORS is permissive for local dev; see `TechDebt.md` to tighten for prod.
 - API key auth is a placeholder; replace with OAuth/JWT later.
+
+## Deployment on Railway
+
+- The FastAPI backend under `api/` is deployed to Railway as a Python service built from source (non-Docker).
+- Railway installs `api/requirements.txt` and runs a start command similar to:
+  ```bash
+  uvicorn app.main:app --host 0.0.0.0 --port $PORT
+  ```
+- `PORT` is provided by Railway and read via `Settings.app_port`.
+- Use Railway's managed Postgres template and set `DATABASE_URL` on the API service to the provided connection string.
+- Set `API_KEY` and optional `CORS_ORIGINS` environment variables on the Railway service.
+
+**Note:** You can still develop and test the API locally using the Docker/SQLite instructions above. Railway deployments are only required when you want to verify behavior on the hosted environment.

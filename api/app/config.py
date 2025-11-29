@@ -1,11 +1,11 @@
 from pydantic_settings import BaseSettings
-from pydantic import AnyHttpUrl
 from typing import List
 import os
 
 class Settings(BaseSettings):
     api_key: str = os.getenv("API_KEY", "dev_api_key")
-    app_port: int = int(os.getenv("APP_PORT", 8080))
+    # Prefer Railway's PORT env var, fall back to APP_PORT, then 8080
+    app_port: int = int(os.getenv("PORT", os.getenv("APP_PORT", 8080)))
     cors_origins: str = os.getenv("CORS_ORIGINS", "*")
     database_url: str = os.getenv("DATABASE_URL", "postgresql+psycopg2://jobaid:jobaidpass@db:5432/jobaid")
 
