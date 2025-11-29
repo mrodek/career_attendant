@@ -22,7 +22,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://jobaid:jobaidpass@db:5432/jobaid}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://jobaid:jobaidpass@db:5432/jobaid}
       API_KEY: ${API_KEY:-dev_api_key}
       APP_PORT: ${APP_PORT:-8080}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
