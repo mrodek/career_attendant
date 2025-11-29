@@ -14,7 +14,9 @@ services:
       - db_data:/var/lib/postgresql/data
 
   api:
-    build: ./api
+    build:
+      context: ./api
+      dockerfile: Dockerfile.local
     container_name: jobaid_api
     restart: unless-stopped
     env_file:
