@@ -4,6 +4,10 @@
   "version": "1.0",
   "description": "Capture the current URL and fill out a quick form",
   "permissions": ["activeTab", "storage", "identity"],
+  "host_permissions": [
+    "http://localhost:8080/*",
+    "https://careerattendant-production.up.railway.app/*"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

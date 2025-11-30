@@ -5,7 +5,7 @@ from ..db import get_db
 from ..schemas import EntryIn, EntryOut, EntriesOut
 from ..crud import upsert_user_by_email, create_entry
 from ..config import Settings
-from ..models import Entry
+from ..models import SavedJob
 
 router = APIRouter(prefix="/entries", tags=["entries"])
 
@@ -18,28 +18,45 @@ async def verify_api_key(x_api_key: Optional[str] = Header(None)):
 
 @router.post("/", response_model=EntryOut, dependencies=[Depends(verify_api_key)])
 async def create_entry_route(payload: EntryIn, db: Session = Depends(get_db)):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Received entry creation request for URL: {payload.jobUrl}")
+    
     user = upsert_user_by_email(db, payload.userEmail)
+    logger.info(f"User: {user.email if user else 'None'}")
+    
     entry = create_entry(db, user, payload)
+    logger.info(f"Entry created with ID: {entry.id}")
+    
+    db.commit()  # Explicitly commit the transaction
+    logger.info(f"Entry committed to database")
+    
     return {"id": str(entry.id), "created_at": entry.created_at}
 
 @router.get("/", response_model=EntriesOut, dependencies=[Depends(verify_api_key)])
 async def list_entries(
     db: Session = Depends(get_db),
-    userEmail: Optional[str] = Query(default=None),
-    url: Optional[str] = Query(default=None),
+    userId: Optional[str] = Query(default=None),
+    jobUrl: Optional[str] = Query(default=None),
     page: int = Query(default=1, ge=1),
     pageSize: int = Query(default=20, ge=1, le=200),
 ):
     # Build ORM query
-    q = db.query(Entry)
-    if userEmail:
-        q = q.filter(Entry.user_email == userEmail)
-    if url:
-        q = q.filter(Entry.url == url)
+    q = db.query(SavedJob)
+    if userId:
+        # Filter by user_id (UUID) if provided
+        try:
+            from uuid import UUID
+            user_uuid = UUID(userId)
+            q = q.filter(SavedJob.user_id == user_uuid)
+        except (ValueError, AttributeError):
+            pass  # Invalid UUID, skip filter
+    if jobUrl:
+        q = q.filter(SavedJob.job_url == jobUrl)
 
     total = q.count()
     items = (
-        q.order_by(Entry.created_at.desc())
+        q.order_by(SavedJob.created_at.desc())
          .offset((page - 1) * pageSize)
          .limit(pageSize)
          .all()
@@ -48,11 +65,14 @@ async def list_entries(
     out_items = [
         {
             "id": str(i.id),
-            "url": i.url,
-            "title": i.title,
-            "company": i.company,
+            "jobUrl": i.job_url,
+            "jobTitle": i.job_title,
+            "companyName": i.company_name,
+            "location": i.location,
+            "applicationStatus": i.application_status,
+            "interestLevel": i.interest_level,
             "created_at": i.created_at,
-            "user_email": i.user_email,
+            "updated_at": i.updated_at,
         }
         for i in items
     ]

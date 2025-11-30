@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Text, Enum, Boolean, SmallInteger, TIMESTAMP, ForeignKey
+from sqlalchemy import Column, String, Text, Enum, Boolean, SmallInteger, TIMESTAMP, ForeignKey, Date, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -30,30 +30,39 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
-    entries = relationship("Entry", back_populates="user")
+    saved_jobs = relationship("SavedJob", back_populates="user")
 
-class Entry(Base):
-    __tablename__ = "entries"
+class SavedJob(Base):
+    __tablename__ = "saved_jobs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
-    url = Column(Text, nullable=False)
-    title = Column(Text, nullable=True)
-    company = Column(Text, nullable=True)
-    work_type = Column(Enum(WorkType), nullable=True)
-    salary_range = Column(Enum(SalaryRange), nullable=True)
-    job_type = Column(Enum(JobType), nullable=True)
-    location = Column(Text, nullable=True)
-    applied = Column(Boolean, nullable=True)
+    # Core job fields
+    job_title = Column(String(500), nullable=True)
+    company_name = Column(String(255), nullable=True)
+    job_url = Column(Text, nullable=False)
+    job_description = Column(Text, nullable=True)
 
-    user_email = Column(Text, nullable=True)
-    user_identity_id = Column(Text, nullable=True)
+    # Compensation & location
+    salary_range = Column(String(100), nullable=True)
+    location = Column(String(255), nullable=True)
 
-    rating = Column(SmallInteger, nullable=True)
+    # Work arrangement and role type
+    remote_type = Column(String(50), nullable=True)  # 'remote', 'hybrid', 'onsite'
+    role_type = Column(String(50), nullable=True)    # 'full_time', 'part_time', 'contract'
+
+    # Interest & application state
+    interest_level = Column(String(20), nullable=True)  # 'high', 'medium', 'low'
+    application_status = Column(String(50), nullable=False, server_default="saved")
+    application_date = Column(Date, nullable=True)
+
+    # Additional notes and scraped metadata
     notes = Column(Text, nullable=True)
+    scraped_data = Column(JSON, nullable=True)
+    source = Column(String(100), nullable=True)
 
-    client_timestamp = Column(TIMESTAMP(timezone=True), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
-    user = relationship("User", back_populates="entries")
+    user = relationship("User", back_populates="saved_jobs")

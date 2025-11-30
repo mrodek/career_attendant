@@ -1,25 +1,42 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Literal
-from datetime import datetime
+from pydantic import BaseModel, Field
+from typing import Optional, Literal, Any
+from datetime import datetime, date
+
 
 class EntryIn(BaseModel):
-    url: str
-    title: Optional[str] = None
-    company: Optional[str] = None
-    workType: Optional[Literal['OnSite','Hybrid','Remote']] = None
-    salaryRange: Optional[Literal['Unknown','>$200K','$200-300K','$300-400K','$400+K']] = None
-    jobType: Optional[Literal['Full-Time','Part-Time','Contract']] = None
+    # Core job details
+    jobUrl: str
+    jobTitle: Optional[str] = None
+    companyName: Optional[str] = None
+    jobDescription: Optional[str] = None
+
+    # Compensation & location
+    salaryRange: Optional[str] = None
     location: Optional[str] = None
-    applied: Optional[bool] = None
+
+    # Work arrangement and role type
+    remoteType: Optional[Literal['onsite', 'hybrid', 'remote']] = None
+    roleType: Optional[Literal['full_time', 'part_time', 'contract']] = None
+
+    # Interest & application state
+    interestLevel: Optional[Literal['high', 'medium', 'low']] = None
+    applicationStatus: Optional[Literal['saved', 'applied', 'interviewing', 'rejected', 'offer']] = 'saved'
+    applicationDate: Optional[date] = None
+
+    # User association (still accepted but no longer stored as columns)
     userEmail: Optional[str] = None
     userId: Optional[str] = None
-    rating: Optional[int] = Field(default=None, ge=1, le=5)
+
+    # Free-form notes and extra metadata
     notes: Optional[str] = None
-    timestamp: Optional[datetime] = None
+    source: Optional[str] = None
+    scrapedData: Optional[Any] = None
+
 
 class EntryOut(BaseModel):
     id: str
     created_at: datetime
+
 
 class EntriesOut(BaseModel):
     items: list[dict]

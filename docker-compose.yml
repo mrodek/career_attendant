@@ -19,13 +19,11 @@ services:
       dockerfile: Dockerfile.local
     container_name: jobaid_api
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://jobaid:jobaidpass@db:5432/jobaid}
-      API_KEY: ${API_KEY:-dev_api_key}
-      APP_PORT: ${APP_PORT:-8080}
-      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      DATABASE_URL: postgresql+psycopg://jobaid:jobaidpass@db:5432/jobaid
+      API_KEY: career_attendant_dev_987
+      APP_PORT: 8080
+      CORS_ORIGINS: "*"
     depends_on:
       - db
     ports:

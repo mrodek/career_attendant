@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 from . import models
-from .models import User, Entry, WorkType, SalaryRange, JobType
+from .models import User, SavedJob
 from .schemas import EntryIn
-from typing import Optional, Tuple
+from typing import Optional
 
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -15,29 +15,28 @@ def upsert_user_by_email(db: Session, email: Optional[str]) -> Optional[User]:
         return user
     user = User(email=email)
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    db.flush()  # Flush to get the ID, but don't commit yet
     return user
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.2, min=0.2, max=2))
-def create_entry(db: Session, user: Optional[User], payload: EntryIn) -> Entry:
-    entry = Entry(
+def create_entry(db: Session, user: Optional[User], payload: EntryIn) -> SavedJob:
+    entry = SavedJob(
         user_id=user.id if user else None,
-        url=payload.url,
-        title=payload.title,
-        company=payload.company,
-        work_type=WorkType(payload.workType) if payload.workType else None,
-        salary_range=SalaryRange(payload.salaryRange) if payload.salaryRange else None,
-        job_type=JobType(payload.jobType) if payload.jobType else None,
+        job_url=payload.jobUrl,
+        job_title=payload.jobTitle,
+        company_name=payload.companyName,
+        job_description=payload.jobDescription,
+        salary_range=payload.salaryRange,
         location=payload.location,
-        applied=payload.applied,
-        user_email=payload.userEmail,
-        user_identity_id=payload.userId,
-        rating=payload.rating,
+        remote_type=payload.remoteType,
+        role_type=payload.roleType,
+        interest_level=payload.interestLevel,
+        application_status=payload.applicationStatus,
+        application_date=payload.applicationDate,
         notes=payload.notes,
-        client_timestamp=payload.timestamp,
+        source=payload.source,
+        scraped_data=payload.scrapedData,
     )
     db.add(entry)
-    db.commit()
-    db.refresh(entry)
+    db.flush()  # Flush to get the ID, but don't commit yet
     return entry
