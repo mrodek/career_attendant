@@ -35,7 +35,7 @@ class User(Base):
     stripe_customer_id = Column(String(255), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-    metadata = Column(JSON, nullable=True, server_default="{}")
+    user_metadata = Column(JSON, nullable=True, server_default="{}")
 
     saved_jobs = relationship("SavedJob", back_populates="user")
 
