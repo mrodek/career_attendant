@@ -22,8 +22,8 @@ async def create_entry_route(payload: EntryIn, db: Session = Depends(get_db)):
     logger = logging.getLogger(__name__)
     logger.info(f"Received entry creation request for URL: {payload.jobUrl}")
     
-    user = upsert_user_by_email(db, payload.userEmail)
-    logger.info(f"User: {user.email if user else 'None'}")
+    user = upsert_user_by_email(db, payload.userEmail, payload.userId)
+    logger.info(f"User: {user.email if user else 'None'} (ID: {user.id if user else 'None'})")
     
     entry = create_entry(db, user, payload)
     logger.info(f"Entry created with ID: {entry.id}")
@@ -44,13 +44,8 @@ async def list_entries(
     # Build ORM query
     q = db.query(SavedJob)
     if userId:
-        # Filter by user_id (UUID) if provided
-        try:
-            from uuid import UUID
-            user_uuid = UUID(userId)
-            q = q.filter(SavedJob.user_id == user_uuid)
-        except (ValueError, AttributeError):
-            pass  # Invalid UUID, skip filter
+        # Filter by user_id (string - Chrome ID or Clerk ID)
+        q = q.filter(SavedJob.user_id == userId)
     if jobUrl:
         q = q.filter(SavedJob.job_url == jobUrl)
 

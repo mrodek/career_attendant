@@ -26,9 +26,16 @@ class JobType(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    email = Column(String, unique=True, nullable=False, index=True)
+    id = Column(String(255), primary_key=True)  # Clerk user_id or Chrome profile ID
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    username = Column(String(100), nullable=True)
+    full_name = Column(String(255), nullable=True)
+    subscription_tier = Column(String(50), nullable=False, server_default="free")
+    subscription_status = Column(String(50), nullable=False, server_default="active")
+    stripe_customer_id = Column(String(255), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    metadata = Column(JSON, nullable=True, server_default="{}")
 
     saved_jobs = relationship("SavedJob", back_populates="user")
 
@@ -36,7 +43,7 @@ class SavedJob(Base):
     __tablename__ = "saved_jobs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(String(255), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Core job fields
     job_title = Column(String(500), nullable=True)
