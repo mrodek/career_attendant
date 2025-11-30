@@ -38,6 +38,8 @@ class User(Base):
     user_metadata = Column(JSON, nullable=True, server_default="{}")
 
     saved_jobs = relationship("SavedJob", back_populates="user")
+    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+    feature_access = relationship("FeatureAccess", back_populates="user", cascade="all, delete-orphan")
 
 class SavedJob(Base):
     __tablename__ = "saved_jobs"
@@ -73,3 +75,29 @@ class SavedJob(Base):
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     user = relationship("User", back_populates="saved_jobs")
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    session_token = Column(String(500), nullable=True)
+    ip_address = Column(String(45), nullable=True)  # IPv6 max length
+    user_agent = Column(Text, nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    expires_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="sessions")
+
+class FeatureAccess(Base):
+    __tablename__ = "feature_access"
+
+    user_id = Column(String(255), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    feature_name = Column(String(100), primary_key=True)
+    access_granted = Column(Boolean, nullable=False, server_default="false")
+    usage_count = Column(SmallInteger, nullable=False, server_default="0")
+    usage_limit = Column(SmallInteger, nullable=True)
+    reset_period = Column(String(50), nullable=True)  # 'daily', 'weekly', 'monthly'
+    last_reset = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    user = relationship("User", back_populates="feature_access")
