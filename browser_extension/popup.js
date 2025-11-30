@@ -11,7 +11,64 @@ const CONFIG = {
 // Get the current tab's URL when popup opens
 let userProfile = { email: '', id: '' };
 const API_URL = CONFIG.USE_PRODUCTION ? CONFIG.PRODUCTION_URL : CONFIG.LOCAL_URL;
+
+// Update environment badge
+function updateEnvBadge() {
+  const badge = document.getElementById('envBadge');
+  if (CONFIG.USE_PRODUCTION) {
+    badge.style.display = 'none';  // Hide badge in production
+  } else {
+    badge.textContent = 'LOCAL';
+    badge.className = 'env-badge local';
+    badge.style.display = 'inline-block';
+  }
+}
+
+// Check if current URL is already saved and populate form
+function checkIfAlreadySaved(url) {
+  chrome.storage.local.get(['entries'], (result) => {
+    const entries = result.entries || [];
+    const existingEntry = entries.find(entry => entry.jobUrl === url);
+    
+    if (existingEntry) {
+      // Populate form with existing data
+      document.getElementById('title').value = existingEntry.jobTitle || '';
+      document.getElementById('company').value = existingEntry.companyName || '';
+      document.getElementById('workType').value = existingEntry.remoteType || '';
+      document.getElementById('salaryRange').value = existingEntry.salaryRange || '';
+      document.getElementById('jobType').value = existingEntry.roleType || '';
+      document.getElementById('location').value = existingEntry.location || '';
+      document.getElementById('notes').value = existingEntry.notes || '';
+      
+      // Set application status
+      if (existingEntry.applicationStatus === 'applied') {
+        document.getElementById('applied').value = 'true';
+      } else if (existingEntry.applicationStatus === 'saved') {
+        document.getElementById('applied').value = 'false';
+      }
+      
+      // Set interest level (rating)
+      const interestMap = { 'low': '1', 'medium': '2', 'high': '3' };
+      const ratingValue = interestMap[existingEntry.interestLevel] || '2';
+      const ratingRadio = document.querySelector(`input[name="rating"][value="${ratingValue}"]`);
+      if (ratingRadio) {
+        ratingRadio.checked = true;
+      }
+      
+      // Update button to saved state
+      const submitBtn = document.querySelector('button[type="submit"]');
+      submitBtn.textContent = '✓ Saved';
+      submitBtn.classList.add('saved');
+      submitBtn.disabled = true;
+      
+      console.log('Found existing entry for this URL:', existingEntry);
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  // Set environment badge
+  updateEnvBadge();
   // Get current tab URL
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const currentTab = tabs[0];
@@ -20,8 +77,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (currentTab && currentTab.url) {
       urlDisplay.textContent = currentTab.url;
-      // Auto-fill title with page title if available
-      if (currentTab.title) {
+      
+      // Check if this URL is already saved
+      checkIfAlreadySaved(currentTab.url);
+      
+      // Auto-fill title with page title if available (only if not already saved)
+      if (currentTab.title && !titleInput.value) {
         titleInput.value = currentTab.title;
       }
     } else {
@@ -161,15 +222,18 @@ function saveEntry(entry) {
           return;
         }
         
-        // Show success message
+        // Update button to saved state
+        const submitBtn = document.querySelector('button[type="submit"]');
+        submitBtn.textContent = '✓ Saved';
+        submitBtn.classList.add('saved');
+        submitBtn.disabled = true;
+        
+        // Show success message briefly
         const successMsg = document.getElementById('successMessage');
         successMsg.classList.add('show');
-        
-        // Reset form after short delay
         setTimeout(() => {
-          document.getElementById('captureForm').reset();
           successMsg.classList.remove('show');
-        }, 1500);
+        }, 2000);
 
         console.log('Entry saved to local storage:', entry);
         console.log('Total entries:', entries.length);
