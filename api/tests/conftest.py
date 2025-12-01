@@ -2,14 +2,19 @@ import os
 import sys
 from pathlib import Path
 import pytest
+import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 
+# Configure pytest-asyncio
+pytest_plugins = ('pytest_asyncio',)
+
 # Set test environment BEFORE importing app modules
 os.environ.setdefault("API_KEY", "dev_api_key")
 os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+os.environ.setdefault("DEV_MODE", "true")  # Bypass JWT auth in tests
 
 # Ensure the 'app' package (api/app) is importable when running tests from api/
 API_DIR = Path(__file__).resolve().parents[1]  # points to .../api
