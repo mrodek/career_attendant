@@ -25,6 +25,6 @@ jobs:
       - name: Run tests
         run: python -m pytest tests/ -v --tb=short
         env:
-          API_KEY: test_api_key
-          DATABASE_URL: sqlite+pysqlite:///:memory:
+          API_KEY: "test_api_key"
+          DATABASE_URL: "sqlite+pysqlite:///:memory:"
           DEV_MODE: "true"
