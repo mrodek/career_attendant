@@ -1,10 +1,18 @@
-from fastapi import Request, HTTPException, status
+from fastapi import Request, status
+from fastapi.responses import JSONResponse
 from jose import jwt, JWTError
 from jose.backends import RSAKey
 import httpx
 from ..config import Settings
 from ..logger import logger
 import json
+
+def auth_error_response(status_code: int, detail: str) -> JSONResponse:
+    """Return a JSON error response for middleware (can't use HTTPException)"""
+    return JSONResponse(
+        status_code=status_code,
+        content={"detail": detail}
+    )
 
 settings = Settings()
 
@@ -54,9 +62,9 @@ class AuthMiddleware:
         # Extract token from header
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Missing or invalid authorization header"
+            return auth_error_response(
+                status.HTTP_401_UNAUTHORIZED,
+                "Missing or invalid authorization header"
             )
         
         token = auth_header.split(' ')[1]
@@ -67,17 +75,17 @@ class AuthMiddleware:
             kid = unverified_header.get('kid')
             
             if not kid:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token missing key ID"
+                return auth_error_response(
+                    status.HTTP_401_UNAUTHORIZED,
+                    "Token missing key ID"
                 )
             
             # Fetch JWKS keys
             jwks = await get_jwks_keys()
             if not jwks:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Unable to fetch JWKS keys"
+                return auth_error_response(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "Unable to fetch JWKS keys"
                 )
             
             # Find the matching key
@@ -88,9 +96,9 @@ class AuthMiddleware:
                     break
             
             if not key:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Unable to find matching key"
+                return auth_error_response(
+                    status.HTTP_401_UNAUTHORIZED,
+                    "Unable to find matching key"
                 )
             
             # Decode and verify JWT using the public key from JWKS
@@ -110,9 +118,9 @@ class AuthMiddleware:
             
         except JWTError as e:
             logger.error(f"JWT validation failed: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid token: {str(e)}"
+            return auth_error_response(
+                status.HTTP_401_UNAUTHORIZED,
+                f"Invalid token: {str(e)}"
             )
         
         response = await call_next(request)

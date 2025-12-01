@@ -1,14 +1,18 @@
 // Background service worker for authentication and API communication
 
 const CONFIG = {
-  // Try local first, fallback to production
+  // Set to true to force production API
+  USE_PRODUCTION: true,
   API_URLS: [
     'http://localhost:8080',
     'https://careerattendant-production.up.railway.app'
   ],
 };
 
-let API_BASE_URL = CONFIG.API_URLS[0]; // Default to local
+// Use production or try auto-detect
+let API_BASE_URL = CONFIG.USE_PRODUCTION 
+  ? CONFIG.API_URLS[1]  // Production
+  : CONFIG.API_URLS[0]; // Local
 let CLERK_FRONTEND_API = null; // Will be fetched from API
 
 // Auto-detect which API URL is available and get Clerk config
@@ -95,7 +99,10 @@ async function clearAuthState() {
 // Handle messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'GET_AUTH_STATE') {
-    sendResponse(authState);
+    // Always reload from storage in case service worker was restarted
+    loadAuthState().then(() => {
+      sendResponse(authState);
+    });
     return true;
   }
   
@@ -127,14 +134,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   
   if (request.type === 'SAVE_JOB') {
-    saveJob(request.jobData).then(sendResponse).catch((error) => {
+    // Reload auth state first in case service worker was restarted
+    loadAuthState().then(() => {
+      return saveJob(request.jobData);
+    }).then(sendResponse).catch((error) => {
       sendResponse({ success: false, error: error.message });
     });
     return true;
   }
   
   if (request.type === 'GET_USER_INFO') {
-    getUserInfo().then(sendResponse).catch((error) => {
+    // Reload auth state first in case service worker was restarted
+    loadAuthState().then(() => {
+      return getUserInfo();
+    }).then(sendResponse).catch((error) => {
       sendResponse({ success: false, error: error.message });
     });
     return true;

@@ -1,6 +1,6 @@
 // Configuration
 const CONFIG = {
-  USE_PRODUCTION: false,
+  USE_PRODUCTION: true,
   PRODUCTION_URL: 'https://careerattendant-production.up.railway.app/entries/',
   LOCAL_URL: 'http://localhost:8080/entries/',
 };
@@ -319,12 +319,23 @@ async function handleFormSubmit(e) {
       chrome.runtime.sendMessage(
         { type: 'SAVE_JOB', jobData: formData },
         async (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('Runtime error:', chrome.runtime.lastError);
+            showErrorMessage('Extension error: ' + chrome.runtime.lastError.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Save Entry';
+            return;
+          }
+          
           if (response && response.success) {
             await saveToLocalStorage(formData);
             markAsSaved();
             showSuccessMessage();
           } else {
-            throw new Error(response?.error || 'Failed to save job');
+            console.error('Save failed:', response);
+            showErrorMessage(response?.error || 'Failed to save job');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Save Entry';
           }
         }
       );

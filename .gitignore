@@ -33,3 +33,6 @@ Thumbs.db
 # Build artifacts
 /dist/
 /build/
+
+# Data
+/Data
