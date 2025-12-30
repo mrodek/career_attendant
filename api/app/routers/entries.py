@@ -1,15 +1,18 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from typing import Optional
+from uuid import UUID
 from ..db import get_db
-from ..schemas import EntryIn, EntryOut, EntriesOut
-from ..crud import upsert_user_by_email, create_entry
+from ..schemas import EntryIn, EntryOut, EntriesOut, SavedJobUpdate
+from ..crud import upsert_user_by_email, create_entry, get_saved_job_by_url
 from ..config import Settings
-from ..models import SavedJob, User
+from ..models import SavedJob, Job, User
 from ..auth.dependencies import get_current_user, get_current_user_id
 from ..logger import logger
 
 router = APIRouter(prefix="/entries", tags=["entries"])
+
 
 async def verify_api_key(x_api_key: Optional[str] = Header(None)):
     """Legacy API key verification - kept for backward compatibility"""
@@ -18,6 +21,7 @@ async def verify_api_key(x_api_key: Optional[str] = Header(None)):
         return
     if x_api_key != settings.api_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
+
 
 @router.post("", response_model=EntryOut)
 async def create_entry_route(
@@ -28,6 +32,14 @@ async def create_entry_route(
     """Create a new job entry for the authenticated user"""
     logger.info(f"Received entry creation request for URL: {payload.jobUrl} from user: {user.id}")
     
+    # Check if user already saved this job
+    existing = get_saved_job_by_url(db, user.id, payload.jobUrl)
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail="You have already saved this job."
+        )
+    
     # Check subscription limits for free tier
     if user.subscription_tier == "free":
         job_count = db.query(SavedJob).filter_by(user_id=user.id).count()
@@ -37,13 +49,21 @@ async def create_entry_route(
                 detail="Free tier limit reached (100 jobs). Upgrade to save more jobs."
             )
     
-    entry = create_entry(db, user, payload)
-    logger.info(f"Entry created with ID: {entry.id}")
-    
-    db.commit()
-    logger.info(f"Entry committed to database")
-    
-    return {"id": str(entry.id), "created_at": entry.created_at}
+    try:
+        entry = create_entry(db, user, payload)
+        logger.info(f"Entry created with ID: {entry.id}")
+        
+        db.commit()
+        logger.info(f"Entry committed to database")
+        
+        return {"id": str(entry.id), "created_at": entry.created_at}
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="You have already saved this job."
+        )
+
 
 @router.get("/", response_model=EntriesOut)
 async def list_entries(
@@ -54,11 +74,15 @@ async def list_entries(
     pageSize: int = Query(default=20, ge=1, le=200),
 ):
     """List job entries for the authenticated user (row-level security)"""
-    # Build ORM query - always filter by authenticated user
-    q = db.query(SavedJob).filter(SavedJob.user_id == user_id)
+    # Build ORM query with Job join - always filter by authenticated user
+    q = (
+        db.query(SavedJob, Job)
+        .join(Job, SavedJob.job_id == Job.id)
+        .filter(SavedJob.user_id == user_id)
+    )
     
     if jobUrl:
-        q = q.filter(SavedJob.job_url == jobUrl)
+        q = q.filter(Job.job_url == jobUrl)
 
     total = q.count()
     items = (
@@ -70,16 +94,139 @@ async def list_entries(
 
     out_items = [
         {
-            "id": str(i.id),
-            "jobUrl": i.job_url,
-            "jobTitle": i.job_title,
-            "companyName": i.company_name,
-            "location": i.location,
-            "applicationStatus": i.application_status,
-            "interestLevel": i.interest_level,
-            "created_at": i.created_at,
-            "updated_at": i.updated_at,
+            "id": str(saved.id),
+            # Nested job data
+            "job": {
+                "id": str(job.id),
+                "jobUrl": job.job_url,
+                "jobTitle": job.job_title,
+                "companyName": job.company_name,
+                "jobDescription": job.job_description,
+                "salaryRange": job.salary_range,
+                "location": job.location,
+                "remoteType": job.remote_type,
+                "roleType": job.role_type,
+                "experienceLevel": job.experience_level,
+                "companyLogoUrl": job.company_logo_url,
+                "industry": job.industry,
+                "requiredSkills": job.required_skills,
+                "postingDate": job.posting_date,
+                "expirationDate": job.expiration_date,
+                "isActive": job.is_active,
+                "source": job.source,
+                "savedCount": job.saved_count,
+                "createdAt": job.created_at,
+                "updatedAt": job.updated_at,
+            },
+            # Flattened for backward compatibility
+            "jobUrl": job.job_url,
+            "jobTitle": job.job_title,
+            "companyName": job.company_name,
+            "location": job.location,
+            "salaryRange": job.salary_range,
+            "remoteType": job.remote_type,
+            "roleType": job.role_type,
+            # User-specific tracking
+            "interestLevel": saved.interest_level,
+            "applicationStatus": saved.application_status,
+            "applicationDate": saved.application_date,
+            "notes": saved.notes,
+            "reminderDate": saved.reminder_date,
+            "priorityRank": saved.priority_rank,
+            # Application outcome
+            "rejectionReason": saved.rejection_reason,
+            "interviewDates": saved.interview_dates,
+            "salaryOffered": saved.salary_offered,
+            "referralContact": saved.referral_contact,
+            # AI Assessment
+            "jobFitScore": saved.job_fit_score,
+            "jobFitReason": saved.job_fit_reason,
+            "jobFitAssessedAt": saved.job_fit_assessed_at,
+            # AI Documents
+            "targetedResumeUrl": saved.targeted_resume_url,
+            "targetedCoverLetterUrl": saved.targeted_cover_letter_url,
+            "documentsGeneratedAt": saved.documents_generated_at,
+            # Workflow
+            "aiWorkflowStatus": saved.ai_workflow_status,
+            "aiWorkflowError": saved.ai_workflow_error,
+            # Timestamps
+            "created_at": saved.created_at,
+            "updated_at": saved.updated_at,
         }
-        for i in items
+        for saved, job in items
     ]
     return {"items": out_items, "total": total, "page": page, "pageSize": pageSize}
+
+
+@router.patch("/{entry_id}")
+async def update_entry(
+    entry_id: str,
+    payload: SavedJobUpdate,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    """Update a saved job entry for the authenticated user"""
+    # Convert string IDs to UUID
+    try:
+        entry_uuid = UUID(entry_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Find the saved job and verify ownership
+    saved_job = db.query(SavedJob).filter(
+        SavedJob.id == entry_uuid,
+        SavedJob.user_id == user_id
+    ).first()
+    
+    if not saved_job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Update only the fields that were provided
+    update_data = payload.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        # Convert camelCase to snake_case for model attributes
+        snake_field = ''.join(['_' + c.lower() if c.isupper() else c for c in field]).lstrip('_')
+        if hasattr(saved_job, snake_field):
+            setattr(saved_job, snake_field, value)
+    
+    db.commit()
+    db.refresh(saved_job)
+    
+    logger.info(f"Updated entry {entry_id} for user {user_id}")
+    
+    return {"id": str(saved_job.id), "updated": True}
+
+
+@router.delete("/{entry_id}")
+async def delete_entry(
+    entry_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    """Delete a saved job entry for the authenticated user"""
+    # Convert string IDs to UUID
+    try:
+        entry_uuid = UUID(entry_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Find the saved job and verify ownership
+    saved_job = db.query(SavedJob).filter(
+        SavedJob.id == entry_uuid,
+        SavedJob.user_id == user_id
+    ).first()
+    
+    if not saved_job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Decrement the job's saved_count
+    job = db.query(Job).filter(Job.id == saved_job.job_id).first()
+    if job and job.saved_count and job.saved_count > 0:
+        job.saved_count -= 1
+    
+    db.delete(saved_job)
+    db.commit()
+    
+    logger.info(f"Deleted entry {entry_id} for user {user_id}")
+    
+    return {"id": entry_id, "deleted": True}

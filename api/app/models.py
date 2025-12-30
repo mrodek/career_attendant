@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Text, Enum, Boolean, SmallInteger, TIMESTAMP, ForeignKey, Date, JSON
+from sqlalchemy import Column, String, Text, Enum, Boolean, SmallInteger, Integer, TIMESTAMP, ForeignKey, Date, JSON, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -41,40 +41,100 @@ class User(Base):
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
     feature_access = relationship("FeatureAccess", back_populates="user", cascade="all, delete-orphan")
 
+
+class Job(Base):
+    __tablename__ = "jobs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # === Core Job Fields ===
+    job_title = Column(String(500), nullable=True)
+    company_name = Column(String(255), nullable=True)
+    job_url = Column(Text, nullable=False, unique=True, index=True)
+    job_description = Column(Text, nullable=True)
+
+    # === Compensation & Location ===
+    salary_range = Column(String(100), nullable=True)
+    location = Column(String(255), nullable=True)
+
+    # === Work Arrangement & Role Type ===
+    remote_type = Column(String(50), nullable=True)      # 'remote', 'hybrid', 'onsite'
+    role_type = Column(String(50), nullable=True)        # 'full_time', 'part_time', 'contract'
+    experience_level = Column(String(50), nullable=True) # 'entry', 'mid', 'senior', 'lead', 'executive'
+
+    # === Job Metadata ===
+    company_logo_url = Column(String(500), nullable=True)
+    industry = Column(String(100), nullable=True)        # 'tech', 'finance', 'healthcare', etc.
+    required_skills = Column(JSON, nullable=True)        # ["Python", "AWS", "SQL"]
+    posting_date = Column(Date, nullable=True)
+    expiration_date = Column(Date, nullable=True)
+    is_active = Column(Boolean, nullable=False, server_default="true")
+
+    # === Source & Scraping ===
+    source = Column(String(100), nullable=True)          # 'linkedin', 'indeed', 'company_site'
+    scraped_data = Column(JSON, nullable=True)
+
+    # === Analytics ===
+    saved_count = Column(Integer, nullable=False, server_default="0")  # Denormalized for recommendations
+
+    # === Timestamps ===
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # === Relationships ===
+    user_jobs = relationship("SavedJob", back_populates="job")
+
 class SavedJob(Base):
     __tablename__ = "saved_jobs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(String(255), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
 
-    # Core job fields
-    job_title = Column(String(500), nullable=True)
-    company_name = Column(String(255), nullable=True)
-    job_url = Column(Text, nullable=False)
-    job_description = Column(Text, nullable=True)
-
-    # Compensation & location
-    salary_range = Column(String(100), nullable=True)
-    location = Column(String(255), nullable=True)
-
-    # Work arrangement and role type
-    remote_type = Column(String(50), nullable=True)  # 'remote', 'hybrid', 'onsite'
-    role_type = Column(String(50), nullable=True)    # 'full_time', 'part_time', 'contract'
-
-    # Interest & application state
-    interest_level = Column(String(20), nullable=True)  # 'high', 'medium', 'low'
-    application_status = Column(String(50), nullable=False, server_default="saved")
+    # === Interest & Application State ===
+    interest_level = Column(String(20), nullable=True)                              # 'high', 'medium', 'low'
+    application_status = Column(String(50), nullable=False, server_default="saved") # 'saved', 'applied', 'interviewing', 'rejected', 'offer'
     application_date = Column(Date, nullable=True)
-
-    # Additional notes and scraped metadata
     notes = Column(Text, nullable=True)
-    scraped_data = Column(JSON, nullable=True)
-    source = Column(String(100), nullable=True)
 
+    # === User Organization ===
+    reminder_date = Column(Date, nullable=True)
+    priority_rank = Column(SmallInteger, nullable=True)
+
+    # === Application Outcome ===
+    rejection_reason = Column(String(255), nullable=True)
+    interview_dates = Column(JSON, nullable=True)         # [{"date": "2024-01-15", "type": "phone"}, ...]
+    salary_offered = Column(String(100), nullable=True)
+    referral_contact = Column(String(255), nullable=True)
+
+    # === AI Job Fit Assessment ===
+    job_fit_score = Column(String(20), nullable=True)     # 'weak', 'fair', 'good', 'strong', 'very_strong'
+    job_fit_reason = Column(Text, nullable=True)
+    job_fit_assessed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    # === AI-Generated Documents ===
+    targeted_resume_url = Column(String(1000), nullable=True)
+    targeted_resume_drive_id = Column(String(100), nullable=True)
+    targeted_cover_letter_url = Column(String(1000), nullable=True)
+    targeted_cover_letter_drive_id = Column(String(100), nullable=True)
+    documents_generated_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    # === AI Workflow Status ===
+    ai_workflow_status = Column(String(50), nullable=True)  # 'pending', 'assessing', 'generating', 'completed', 'failed'
+    ai_workflow_error = Column(Text, nullable=True)
+
+    # === Timestamps ===
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
+    # === Constraints ===
+    __table_args__ = (
+        UniqueConstraint('user_id', 'job_id', name='uq_user_job'),
+    )
+
+    # === Relationships ===
     user = relationship("User", back_populates="saved_jobs")
+    job = relationship("Job", back_populates="user_jobs")
 
 class UserSession(Base):
     __tablename__ = "user_sessions"

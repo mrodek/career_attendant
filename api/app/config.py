@@ -23,6 +23,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        extra = "ignore"  # Allow extra env vars
 
 def get_cors_origins(settings: Settings) -> List[str]:
     origins = settings.cors_origins
