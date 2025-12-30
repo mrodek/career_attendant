@@ -1,8 +1,8 @@
 // Configuration
 const CONFIG = {
-  USE_PRODUCTION: true,
-  PRODUCTION_URL: 'https://careerattendant-production.up.railway.app/entries/',
-  LOCAL_URL: 'http://localhost:8080/entries/',
+  USE_PRODUCTION: false,
+  PRODUCTION_URL: 'https://careerattendant-production.up.railway.app/entries',
+  LOCAL_URL: 'http://localhost:8080/entries',
 };
 
 // Authentication state
@@ -234,14 +234,20 @@ function showAlreadySavedStatus(savedJob) {
   submitBtn.classList.add('saved');
   submitBtn.disabled = true;
   
-  // Show info message
+  // Show info message with AI fit score if available
   const form = document.getElementById('captureForm');
   const infoDiv = document.createElement('div');
   infoDiv.className = 'info-message';
+  
+  let statusText = `Status: ${savedJob.applicationStatus || 'saved'} | Interest: ${savedJob.interestLevel || 'medium'}`;
+  if (savedJob.jobFitScore) {
+    statusText += ` | Fit: ${savedJob.jobFitScore}`;
+  }
+  
   infoDiv.innerHTML = `
     <strong>✓ This job was saved on ${new Date(savedJob.created_at).toLocaleDateString()}</strong>
     <br>
-    <small>Status: ${savedJob.applicationStatus || 'saved'} | Interest: ${savedJob.interestLevel || 'medium'}</small>
+    <small>${statusText}</small>
   `;
   form.insertBefore(infoDiv, form.firstChild);
   
@@ -250,13 +256,19 @@ function showAlreadySavedStatus(savedJob) {
 }
 
 // Populate form with existing entry
+// Handles both nested (new) and flat (legacy) response structures
 function populateFormWithEntry(entry) {
-  document.getElementById('title').value = entry.jobTitle || '';
-  document.getElementById('company').value = entry.companyName || '';
-  document.getElementById('workType').value = entry.remoteType || '';
-  document.getElementById('salaryRange').value = entry.salaryRange || '';
-  document.getElementById('jobType').value = entry.roleType || '';
-  document.getElementById('location').value = entry.location || '';
+  // Support both nested job object (new API) and flat structure (legacy/local storage)
+  const job = entry.job || entry;
+  
+  document.getElementById('title').value = job.jobTitle || '';
+  document.getElementById('company').value = job.companyName || '';
+  document.getElementById('workType').value = job.remoteType || '';
+  document.getElementById('salaryRange').value = job.salaryRange || '';
+  document.getElementById('jobType').value = job.roleType || '';
+  document.getElementById('location').value = job.location || '';
+  
+  // User-specific fields are always at top level
   document.getElementById('notes').value = entry.notes || '';
   
   if (entry.applicationStatus === 'applied') {

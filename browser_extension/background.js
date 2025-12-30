@@ -2,7 +2,7 @@
 
 const CONFIG = {
   // Set to true to force production API
-  USE_PRODUCTION: true,
+  USE_PRODUCTION: false,
   API_URLS: [
     'http://localhost:8080',
     'https://careerattendant-production.up.railway.app'
@@ -136,8 +136,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'SAVE_JOB') {
     // Reload auth state first in case service worker was restarted
     loadAuthState().then(() => {
+      console.log('SAVE_JOB - Auth state after reload:', {
+        isAuthenticated: authState.isAuthenticated,
+        hasToken: !!authState.sessionToken,
+        userId: authState.userId
+      });
       return saveJob(request.jobData);
     }).then(sendResponse).catch((error) => {
+      console.error('SAVE_JOB error:', error);
       sendResponse({ success: false, error: error.message });
     });
     return true;
