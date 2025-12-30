@@ -4,25 +4,47 @@ from datetime import datetime, date
 
 
 # === Job Schemas (shared job data) ===
+# NOTE: We intentionally do NOT store raw job descriptions (legal/copyright concerns)
+# Only derived/extracted signals are persisted
 
 class JobBase(BaseModel):
-    """Base schema for job data"""
+    """Base schema for job data - only factual/derived fields, no raw content"""
     jobUrl: str
     jobTitle: Optional[str] = None
     companyName: Optional[str] = None
-    jobDescription: Optional[str] = None
-    salaryRange: Optional[str] = None
+    # jobDescription intentionally omitted - not stored
+    
+    # Parsed compensation (extracted from page, not raw text)
+    salaryMin: Optional[int] = None
+    salaryMax: Optional[int] = None
+    salaryCurrency: Optional[str] = "USD"
+    salaryPeriod: Optional[Literal['year', 'hour', 'month', 'week']] = None
+    salaryRaw: Optional[str] = None  # Display string only, e.g. "$150K-$200K/yr"
+    
+    # Location
     location: Optional[str] = None
+    locationCountry: Optional[str] = None
+    locationCity: Optional[str] = None
+    
+    # Work arrangement
     remoteType: Optional[Literal['onsite', 'hybrid', 'remote']] = None
     roleType: Optional[Literal['full_time', 'part_time', 'contract']] = None
-    experienceLevel: Optional[Literal['entry', 'mid', 'senior', 'lead', 'executive']] = None
+    seniority: Optional[Literal['intern', 'junior', 'mid', 'senior', 'staff', 'principal', 'director', 'vp', 'cxo']] = None
+    
+    # Extracted skills (derived signals)
+    requiredSkills: Optional[List[str]] = None
+    preferredSkills: Optional[List[str]] = None
+    yearsExperienceMin: Optional[int] = None
+    yearsExperienceMax: Optional[int] = None
+    
+    # Metadata
     companyLogoUrl: Optional[str] = None
     industry: Optional[str] = None
-    requiredSkills: Optional[List[str]] = None
     postingDate: Optional[date] = None
     expirationDate: Optional[date] = None
+    easyApply: Optional[bool] = None
     source: Optional[str] = None
-    scrapedData: Optional[Any] = None
+    extractionConfidence: Optional[int] = None  # 0-100
 
 
 class JobOut(BaseModel):
@@ -31,19 +53,39 @@ class JobOut(BaseModel):
     jobUrl: str
     jobTitle: Optional[str] = None
     companyName: Optional[str] = None
-    jobDescription: Optional[str] = None
-    salaryRange: Optional[str] = None
+    
+    # Parsed compensation
+    salaryMin: Optional[int] = None
+    salaryMax: Optional[int] = None
+    salaryCurrency: Optional[str] = None
+    salaryPeriod: Optional[str] = None
+    salaryRaw: Optional[str] = None
+    
+    # Location
     location: Optional[str] = None
+    locationCountry: Optional[str] = None
+    locationCity: Optional[str] = None
+    
+    # Work arrangement
     remoteType: Optional[str] = None
     roleType: Optional[str] = None
-    experienceLevel: Optional[str] = None
+    seniority: Optional[str] = None
+    
+    # Extracted skills
+    requiredSkills: Optional[List[str]] = None
+    preferredSkills: Optional[List[str]] = None
+    yearsExperienceMin: Optional[int] = None
+    yearsExperienceMax: Optional[int] = None
+    
+    # Metadata
     companyLogoUrl: Optional[str] = None
     industry: Optional[str] = None
-    requiredSkills: Optional[List[str]] = None
     postingDate: Optional[date] = None
     expirationDate: Optional[date] = None
+    easyApply: Optional[bool] = None
     isActive: bool = True
     source: Optional[str] = None
+    extractionConfidence: Optional[int] = None
     savedCount: int = 0
     createdAt: datetime
     updatedAt: datetime
@@ -55,19 +97,43 @@ class JobOut(BaseModel):
 # === SavedJob Schemas (user-specific tracking) ===
 
 class SavedJobIn(BaseModel):
-    """Input schema for saving a job - includes job data for creation"""
-    # Job fields (used to find or create the Job)
+    """Input schema for saving a job - only derived/factual fields, no raw content"""
+    # Job identification
     jobUrl: str
     jobTitle: Optional[str] = None
     companyName: Optional[str] = None
-    jobDescription: Optional[str] = None
-    salaryRange: Optional[str] = None
+    
+    # Parsed compensation (extracted client-side)
+    salaryMin: Optional[int] = None
+    salaryMax: Optional[int] = None
+    salaryCurrency: Optional[str] = "USD"
+    salaryPeriod: Optional[Literal['year', 'hour', 'month', 'week']] = None
+    salaryRaw: Optional[str] = None
+    
+    # Location
     location: Optional[str] = None
+    locationCountry: Optional[str] = None
+    locationCity: Optional[str] = None
+    
+    # Work arrangement
     remoteType: Optional[Literal['onsite', 'hybrid', 'remote']] = None
     roleType: Optional[Literal['full_time', 'part_time', 'contract']] = None
-    experienceLevel: Optional[Literal['entry', 'mid', 'senior', 'lead', 'executive']] = None
+    seniority: Optional[Literal['intern', 'junior', 'mid', 'senior', 'staff', 'principal', 'director', 'vp', 'cxo']] = None
+    
+    # Extracted skills (derived client-side from page content)
+    requiredSkills: Optional[List[str]] = None
+    preferredSkills: Optional[List[str]] = None
+    yearsExperienceMin: Optional[int] = None
+    yearsExperienceMax: Optional[int] = None
+    
+    # Metadata
+    postingDate: Optional[date] = None
+    easyApply: Optional[bool] = None
     source: Optional[str] = None
-    scrapedData: Optional[Any] = None
+    extractionConfidence: Optional[int] = None  # 0-100
+    
+    # Debug (for debugging extraction - not for production use)
+    scrapedTextDebug: Optional[str] = None  # Raw scraped text for debugging
 
     # User-specific tracking fields
     interestLevel: Optional[Literal['high', 'medium', 'low']] = None

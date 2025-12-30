@@ -3,7 +3,7 @@
   "name": "Career Attendant",
   "version": "2.0",
   "description": "Save and track job applications with authentication",
-  "permissions": ["activeTab", "storage", "identity"],
+  "permissions": ["activeTab", "storage", "identity", "scripting"],
   "host_permissions": [
     "http://localhost:8080/*",
     "https://careerattendant-production.up.railway.app/*",

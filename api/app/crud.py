@@ -44,7 +44,11 @@ def get_or_create_job(db: Session, payload: EntryIn) -> Tuple[Job, bool]:
     """
     Find an existing job by URL or create a new one.
     Returns: (job, created) where created is True if a new job was created.
+    
+    NOTE: We only store derived/factual fields, not raw job descriptions.
     """
+    from datetime import datetime, timezone
+    
     # Try to find existing job by URL
     job = db.query(Job).filter(Job.job_url == payload.jobUrl).one_or_none()
     if job:
@@ -56,29 +60,60 @@ def get_or_create_job(db: Session, payload: EntryIn) -> Tuple[Job, bool]:
         if payload.companyName and not job.company_name:
             job.company_name = payload.companyName
             updated = True
-        if payload.jobDescription and not job.job_description:
-            job.job_description = payload.jobDescription
+        # Salary fields
+        if payload.salaryMin and not job.salary_min:
+            job.salary_min = payload.salaryMin
             updated = True
-        if payload.salaryRange and not job.salary_range:
-            job.salary_range = payload.salaryRange
+        if payload.salaryMax and not job.salary_max:
+            job.salary_max = payload.salaryMax
             updated = True
+        if payload.salaryRaw and not job.salary_raw:
+            job.salary_raw = payload.salaryRaw
+            updated = True
+        if payload.salaryPeriod and not job.salary_period:
+            job.salary_period = payload.salaryPeriod
+            updated = True
+        # Location
         if payload.location and not job.location:
             job.location = payload.location
             updated = True
+        if getattr(payload, 'locationCountry', None) and not job.location_country:
+            job.location_country = payload.locationCountry
+            updated = True
+        if getattr(payload, 'locationCity', None) and not job.location_city:
+            job.location_city = payload.locationCity
+            updated = True
+        # Work arrangement
         if payload.remoteType and not job.remote_type:
             job.remote_type = payload.remoteType
             updated = True
         if payload.roleType and not job.role_type:
             job.role_type = payload.roleType
             updated = True
-        if payload.experienceLevel and not job.experience_level:
-            job.experience_level = payload.experienceLevel
+        if getattr(payload, 'seniority', None) and not job.seniority:
+            job.seniority = payload.seniority
             updated = True
+        # Skills
+        if getattr(payload, 'requiredSkills', None) and not job.required_skills:
+            job.required_skills = payload.requiredSkills
+            updated = True
+        if getattr(payload, 'preferredSkills', None) and not job.preferred_skills:
+            job.preferred_skills = payload.preferredSkills
+            updated = True
+        # Experience
+        if getattr(payload, 'yearsExperienceMin', None) and not job.years_experience_min:
+            job.years_experience_min = payload.yearsExperienceMin
+            updated = True
+        # Metadata
         if payload.source and not job.source:
             job.source = payload.source
             updated = True
-        if payload.scrapedData and not job.scraped_data:
-            job.scraped_data = payload.scrapedData
+        if getattr(payload, 'easyApply', None) is not None and job.easy_apply is None:
+            job.easy_apply = payload.easyApply
+            updated = True
+        # Debug data (always update if provided for debugging)
+        if getattr(payload, 'scrapedTextDebug', None):
+            job.scraped_text_debug = payload.scrapedTextDebug
             updated = True
         
         if updated:
@@ -86,19 +121,38 @@ def get_or_create_job(db: Session, payload: EntryIn) -> Tuple[Job, bool]:
         
         return job, False
     
-    # Create new job
+    # Create new job with derived fields only
     job = Job(
         job_url=payload.jobUrl,
         job_title=payload.jobTitle,
         company_name=payload.companyName,
-        job_description=payload.jobDescription,
-        salary_range=payload.salaryRange,
+        # Parsed salary
+        salary_min=getattr(payload, 'salaryMin', None),
+        salary_max=getattr(payload, 'salaryMax', None),
+        salary_currency=getattr(payload, 'salaryCurrency', 'USD'),
+        salary_period=getattr(payload, 'salaryPeriod', None),
+        salary_raw=getattr(payload, 'salaryRaw', None),
+        # Location
         location=payload.location,
+        location_country=getattr(payload, 'locationCountry', None),
+        location_city=getattr(payload, 'locationCity', None),
+        # Work arrangement
         remote_type=payload.remoteType,
         role_type=payload.roleType,
-        experience_level=getattr(payload, 'experienceLevel', None),
+        seniority=getattr(payload, 'seniority', None),
+        # Skills
+        required_skills=getattr(payload, 'requiredSkills', None),
+        preferred_skills=getattr(payload, 'preferredSkills', None),
+        years_experience_min=getattr(payload, 'yearsExperienceMin', None),
+        years_experience_max=getattr(payload, 'yearsExperienceMax', None),
+        # Metadata
+        posting_date=getattr(payload, 'postingDate', None),
+        easy_apply=getattr(payload, 'easyApply', None),
         source=payload.source,
-        scraped_data=payload.scrapedData,
+        extraction_confidence=getattr(payload, 'extractionConfidence', None),
+        extracted_at=datetime.now(timezone.utc),
+        # Debug
+        scraped_text_debug=getattr(payload, 'scrapedTextDebug', None),
     )
     db.add(job)
     db.flush()

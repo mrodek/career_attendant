@@ -47,35 +47,53 @@ class Job(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # === Core Job Fields ===
+    # === Core Job Fields (Factual, non-copyrightable) ===
     job_title = Column(String(500), nullable=True)
     company_name = Column(String(255), nullable=True)
     job_url = Column(Text, nullable=False, unique=True, index=True)
-    job_description = Column(Text, nullable=True)
+    # NOTE: job_description intentionally not stored (legal/copyright concerns)
 
-    # === Compensation & Location ===
-    salary_range = Column(String(100), nullable=True)
+    # === Parsed Compensation ===
+    salary_min = Column(Integer, nullable=True)           # Parsed: 150000
+    salary_max = Column(Integer, nullable=True)           # Parsed: 200000
+    salary_currency = Column(String(10), nullable=True, server_default="USD")
+    salary_period = Column(String(20), nullable=True)     # 'year', 'hour', 'month'
+    salary_raw = Column(String(100), nullable=True)       # "$150K-$200K/yr" (display string only)
+
+    # === Location ===
     location = Column(String(255), nullable=True)
+    location_country = Column(String(10), nullable=True)  # 'US', 'CA', etc.
+    location_city = Column(String(100), nullable=True)
 
     # === Work Arrangement & Role Type ===
-    remote_type = Column(String(50), nullable=True)      # 'remote', 'hybrid', 'onsite'
-    role_type = Column(String(50), nullable=True)        # 'full_time', 'part_time', 'contract'
-    experience_level = Column(String(50), nullable=True) # 'entry', 'mid', 'senior', 'lead', 'executive'
+    remote_type = Column(String(50), nullable=True)       # 'remote', 'hybrid', 'onsite'
+    role_type = Column(String(50), nullable=True)         # 'full_time', 'part_time', 'contract'
+    seniority = Column(String(50), nullable=True)         # 'intern', 'junior', 'mid', 'senior', 'staff', 'principal', 'director', 'vp', 'cxo'
+
+    # === Extracted Skills (Derived signals, not raw content) ===
+    required_skills = Column(JSON, nullable=True)         # ["Python", "Kubernetes", "PyTorch"]
+    preferred_skills = Column(JSON, nullable=True)        # ["Go", "Terraform"]
+    years_experience_min = Column(SmallInteger, nullable=True)
+    years_experience_max = Column(SmallInteger, nullable=True)
 
     # === Job Metadata ===
     company_logo_url = Column(String(500), nullable=True)
-    industry = Column(String(100), nullable=True)        # 'tech', 'finance', 'healthcare', etc.
-    required_skills = Column(JSON, nullable=True)        # ["Python", "AWS", "SQL"]
+    industry = Column(String(100), nullable=True)
     posting_date = Column(Date, nullable=True)
     expiration_date = Column(Date, nullable=True)
+    easy_apply = Column(Boolean, nullable=True)
     is_active = Column(Boolean, nullable=False, server_default="true")
 
-    # === Source & Scraping ===
-    source = Column(String(100), nullable=True)          # 'linkedin', 'indeed', 'company_site'
-    scraped_data = Column(JSON, nullable=True)
+    # === Source & Extraction Metadata ===
+    source = Column(String(100), nullable=True)           # 'linkedin', 'indeed', 'greenhouse'
+    extracted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    extraction_confidence = Column(Integer, nullable=True)  # 0-100 confidence score
+
+    # === Debug Data (for extraction debugging, not for production use) ===
+    scraped_text_debug = Column(Text, nullable=True)  # Raw scraped text for debugging extraction
 
     # === Analytics ===
-    saved_count = Column(Integer, nullable=False, server_default="0")  # Denormalized for recommendations
+    saved_count = Column(Integer, nullable=False, server_default="0")
 
     # === Timestamps ===
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
