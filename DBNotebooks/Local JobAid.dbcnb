@@ -1,0 +1,263 @@
+cells:
+  - kind: 2
+    languageId: sql
+    value: "-- Migration: Normalize SavedJob table - Add Job table\r
+
+      -- Run this in DBCode notebook\r
+
+      \r
+
+      DROP TABLE IF EXISTS jobs CASCADE;\r
+
+      \r
+
+      -- 1. Create the jobs table\r
+
+      CREATE TABLE jobs (\r
+
+      \    id VARCHAR(36) PRIMARY KEY,\r
+
+      \    job_title VARCHAR(255),\r
+
+      \    company_name VARCHAR(255),\r
+
+      \    job_url VARCHAR(2048) NOT NULL UNIQUE,\r
+
+      \    job_description TEXT,\r
+
+      \    salary_range VARCHAR(100),\r
+
+      \    location VARCHAR(255),\r
+
+      \    remote_type VARCHAR(50),\r
+
+      \    role_type VARCHAR(50),\r
+
+      \    experience_level VARCHAR(50),\r
+
+      \    company_logo_url VARCHAR(2048),\r
+
+      \    industry VARCHAR(100),\r
+
+      \    required_skills JSONB,\r
+
+      \    posting_date TIMESTAMPTZ,\r
+
+      \    expiration_date TIMESTAMPTZ,\r
+
+      \    is_active BOOLEAN DEFAULT TRUE,\r
+
+      \    source VARCHAR(100),\r
+
+      \    scraped_data JSONB,\r
+
+      \    saved_count INTEGER DEFAULT 0,\r
+
+      \    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,\r
+
+      \    updated_at TIMESTAMPTZ\r
+
+      );\r
+
+      \r
+
+      CREATE INDEX ix_jobs_job_url ON jobs(job_url);\r
+
+      CREATE INDEX ix_jobs_company_name ON jobs(company_name);\r
+
+      \r
+
+      \r
+
+      \r
+
+      \r
+
+      \r
+
+      -- 6. Drop old columns from saved_jobs (optional - can do later)\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN job_title;\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN company_name;\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN job_description;\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN salary_range;\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN location;\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN remote_type;\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN role_type;\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN source;\r\n"
+    metadata: {}
+  - kind: 2
+    languageId: sql
+    value: "-- 2. Add new columns to saved_jobs\r
+
+      ALTER TABLE saved_jobs ADD COLUMN job_id VARCHAR(36);\r
+
+      \r
+
+      -- AI job fit assessment\r
+
+      ALTER TABLE saved_jobs ADD COLUMN job_fit_score INTEGER;\r
+
+      ALTER TABLE saved_jobs ADD COLUMN job_fit_reason TEXT;\r
+
+      ALTER TABLE saved_jobs ADD COLUMN job_fit_assessed_at TIMESTAMPTZ;\r
+
+      \r
+
+      -- AI-generated documents\r
+
+      ALTER TABLE saved_jobs ADD COLUMN targeted_resume_url VARCHAR(2048);\r
+
+      ALTER TABLE saved_jobs ADD COLUMN targeted_resume_drive_id VARCHAR(255);\r
+
+      ALTER TABLE saved_jobs ADD COLUMN targeted_cover_letter_url
+      VARCHAR(2048);\r
+
+      ALTER TABLE saved_jobs ADD COLUMN targeted_cover_letter_drive_id
+      VARCHAR(255);\r
+
+      ALTER TABLE saved_jobs ADD COLUMN documents_generated_at TIMESTAMPTZ;\r
+
+      \r
+
+      -- AI workflow status\r
+
+      ALTER TABLE saved_jobs ADD COLUMN ai_workflow_status VARCHAR(50);\r
+
+      ALTER TABLE saved_jobs ADD COLUMN ai_workflow_error TEXT;\r
+
+      \r
+
+      -- Application outcome\r
+
+      ALTER TABLE saved_jobs ADD COLUMN rejection_reason TEXT;\r
+
+      ALTER TABLE saved_jobs ADD COLUMN interview_dates JSONB;\r
+
+      ALTER TABLE saved_jobs ADD COLUMN salary_offered VARCHAR(100);\r
+
+      ALTER TABLE saved_jobs ADD COLUMN referral_contact VARCHAR(255);\r
+
+      \r
+
+      -- Additional tracking\r
+
+      ALTER TABLE saved_jobs ADD COLUMN application_date TIMESTAMPTZ;\r
+
+      ALTER TABLE saved_jobs ADD COLUMN reminder_date TIMESTAMPTZ;\r
+
+      ALTER TABLE saved_jobs ADD COLUMN priority_rank INTEGER;"
+    metadata: {}
+  - kind: 2
+    languageId: sql
+    value: "-- 3. Migrate existing data: Create jobs from saved_jobs\r
+
+      INSERT INTO jobs (id, job_url, job_title, company_name, job_description,
+      salary_range, location, remote_type, role_type, source, saved_count,
+      is_active, created_at)\r
+
+      SELECT \r
+
+      \    gen_random_uuid()::text,\r
+
+      \    job_url,\r
+
+      \    job_title,\r
+
+      \    company_name,\r
+
+      \    job_description,\r
+
+      \    salary_range,\r
+
+      \    location,\r
+
+      \    remote_type,\r
+
+      \    role_type,\r
+
+      \    source,\r
+
+      \    1,\r
+
+      \    TRUE,\r
+
+      \    MIN(created_at)\r
+
+      FROM saved_jobs\r
+
+      WHERE job_url IS NOT NULL\r
+
+      GROUP BY job_url, job_title, company_name, job_description, salary_range,
+      location, remote_type, role_type, source;\r
+
+      \r
+
+      -- 4. Update saved_jobs with job_id references\r
+
+      UPDATE saved_jobs s\r
+
+      SET job_id = j.id\r
+
+      FROM jobs j\r
+
+      WHERE s.job_url = j.job_url;\r
+
+      \r
+
+      -- 5. Add constraints\r
+
+      ALTER TABLE saved_jobs ADD CONSTRAINT fk_saved_jobs_job_id FOREIGN KEY
+      (job_id) REFERENCES jobs(id);\r
+
+      ALTER TABLE saved_jobs ADD CONSTRAINT uq_user_job UNIQUE (user_id,
+      job_id);\r
+
+      \r
+
+      \r
+
+      \r\n"
+    metadata: {}
+  - kind: 2
+    languageId: sql
+    value: "\r
+
+      -- 6. Drop old columns from saved_jobs (optional - can do later)\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN job_title;\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN company_name;\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN job_description;\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN salary_range;\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN location;\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN remote_type;\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN role_type;\r
+
+      -- ALTER TABLE saved_jobs DROP COLUMN source;\r\n"
+    metadata: {}
+  - kind: 2
+    languageId: sql
+    value: select * from jobs;
+    metadata: {}
+  - kind: 2
+    languageId: sql
+    value: Select * from saved_jobs
+    metadata: {}
+metadata:
+  conn:
+    id: V0woJJq1b-_uROkItEqHO
+    name: jobaid
+  database: jobaid
