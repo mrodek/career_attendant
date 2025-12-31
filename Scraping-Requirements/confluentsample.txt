@@ -1,0 +1,89 @@
+We’re not just building better tech. We’re rewriting how data moves and what the world can do with it. With Confluent, data doesn’t sit still. Our platform puts information in motion, streaming in near real-time so companies can react faster, build smarter, and deliver experiences as dynamic as the world around them.
+
+It takes a certain kind of person to join this team. Those who ask hard questions, give honest feedback, and show up for each other. No egos, no solo acts. Just smart, curious humans pushing toward something bigger, together.
+
+One Confluent. One Team. One Data Streaming Platform.
+
+About the Role:
+
+The Staff AI Architect will play a pivotal role within the Data team, providing technical leadership and solution design in partnership with the Data Science and Data Engineering teams. In this role, you will leverage your expertise in data technologies, combined with knowledge of Confluent Cloud, Flink, and other AI-powered automations to design scalable, event-driven systems that meet the complex needs of our growing organization.
+
+What You Will Do:
+
+AI Integration: Incorporate AI technologies, such as machine learning models, natural language processing, or predictive analytics, into automation and event-driven workflows & data solutions.
+
+Data Integration: Contribute to the design, integrations and management of AI/ML solutions across SaaS platforms, systems, and databases, leveraging Confluent, AI-powered tools, and microservices patterns.
+
+Strategic Leadership: Partner with cross-functional stakeholders to translate business needs into cohesive AI strategies and outcomes.
+
+Microservices Development: Oversee and provide input on the design of microservices that align with modern cloud-native principles, enabling robust and reusable system components.
+
+Technical Oversight: Conduct technical design reviews, enforce best practices, and ensure the delivery of high-quality, secure, and maintainable solutions.
+
+Team & Mentorship: Dedicate time to coach and mentor other team members.
+
+What You Will Bring:
+
+Experience:
+
+A minimum of 8+ years in enterprise data, software architecture, or related fields, with 5+ years of hands-on experience in Kafka and event-driven systems.
+
+Proven track record of designing and implementing large-scale, cloud-native solutions leveraging Kafka, Flink, and AI-driven tools.
+
+Hands-on experience with feature stores, vector databases, or retrieval-augmented generation (RAG) for real-time AI.
+
+Experience optimizing large-scale, real-time systems for low latency, high throughput, and cost efficiency.
+
+Technical Expertise:
+
+Demonstrated ability to leverage AI to build and deliver compelling data solutions
+
+Strong understanding of event-driven architecture, stream processing (Kafka Streams, Flink), and distributed systems.
+
+Proficiency in microservices architecture, RESTful APIs, and modern DevOps practices (CI/CD pipelines).
+
+Strong background in cloud platforms (AWS, GCP, or Azure), including infrastructure as code (e.g., Terraform).
+
+In-depth knowledge of SQL and NoSQL database technologies.
+
+Familiarity with containerization and orchestration tools (Docker, Kubernetes).
+
+Familiarity with TensorFlow, PyTorch, Hugging Face, or other ML libraries.
+
+Leadership:
+
+Demonstrated ability to lead cross-functional initiatives, manage dependencies across teams, and deliver enterprise-wide impact.
+
+Skilled in stakeholder engagement, aligning technical initiatives with strategic business objectives.
+
+Innovation and Vision:
+
+A passion for exploring and implementing emerging technologies, particularly in AI and automation.
+
+A forward-looking perspective on market and technology trends.
+
+Communication and Collaboration:
+
+Excellent communication skills, with the ability to convey complex technical concepts to diverse audiences.
+
+Strong interpersonal skills and a collaborative mindset.
+
+What Gives You an Edge:
+
+Industry recognition as a thought leader in AI and real-time data processing.
+
+Hands-on experience deploying and managing AI/ML pipelines or integrating AI services (e.g., AWS SageMaker, GCP Vertex AI).
+
+Experience representing technical expertise in external forums such as conferences, webinars, or panels.
+
+A deep understanding of Kafka, Flink, AI/ML frameworks, and modern event-driven architectures.
+
+Ready to build what's next? Let’s get in motion.
+
+Come As You Are
+
+Belonging isn’t a perk here. It’s the baseline. We work across time zones and backgrounds, knowing the best ideas come from different perspectives. And we make space for everyone to lead, grow, and challenge what’s possible.
+
+We’re proud to be an equal opportunity workplace. Employment decisions are based on job-related criteria, without regard to race, color, religion, sex, sexual orientation, gender identity, national origin, disability, veteran status, or any other classification protected by law.
+
+Apply for this Job

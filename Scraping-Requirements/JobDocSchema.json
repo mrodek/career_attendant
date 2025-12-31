@@ -1,0 +1,118 @@
+{
+  "schema": { "name": "JobDoc", "version": "1.0.0" },
+
+  "id": "job_<stable_hash>",
+  "source": {
+    "board": "linkedin|indeed|greenhouse|lever|workday|ashby|smartrecruiters|icims|other",
+    "url": "https://…",
+    "hostname": "www.linkedin.com",
+    "scraped_at": "2025-12-30T13:06:42.622Z",
+    "retrieved_via": "http|playwright|selenium|api",
+    "locale": "en-US",
+    "raw": {
+      "page_title": "…",
+      "headings": ["…"],
+      "text": "… full visible text …",
+      "html": "… optional …",
+      "jsonld": [{ "…": "…" }],
+      "meta": { "og:title": "…", "og:description": "…" }
+    }
+  },
+
+  "job": {
+    "title": "…",
+    "company": {
+      "name": "…",
+      "parent_name": null,
+      "industry": null,
+      "size": null,
+      "website": null
+    },
+    "location": {
+      "text": "United States (Remote)",
+      "country": "US",
+      "region": "NY",
+      "city": "New York",
+      "remote_eligible": true
+    },
+    "workplace_mode": "remote|hybrid|onsite|unknown",
+    "employment_type": "full_time|part_time|contract|temporary|intern|unknown",
+    "seniority": "intern|junior|mid|senior|staff|principal|director|vp|cxo|unknown",
+    "department": null,
+
+    "posted": {
+      "date": "2025-12-19",
+      "relative_text": "1 week ago",
+      "confidence": 0.65
+    },
+
+    "compensation": {
+      "currency": "USD",
+      "period": "year|hour|month|week|day|unknown",
+      "min": 230000,
+      "max": 290000,
+      "base_min": null,
+      "base_max": 240000,
+      "bonus_pct": 25,
+      "equity": true,
+      "raw": "$230K/yr - $290K/yr; Up to $240k base + 25% bonus + RSU",
+      "confidence": 0.7
+    },
+
+    "description": {
+      "clean_text": "… cleaned full text of job description …",
+      "lang": "en",
+      "sections": {
+        "summary": "…",
+        "responsibilities": ["…", "…"],
+        "requirements": ["…"],
+        "preferred": ["…"],
+        "benefits": ["…"],
+        "about_company": "…",
+        "other": ["…"]
+      }
+    },
+
+    "apply": {
+      "easy_apply": false,
+      "application_url": null
+    }
+  },
+
+  "signals": {
+    "skills": {
+      "hard": ["kubernetes", "pytorch", "distributed training"],
+      "soft": ["customer-facing", "pre-sales"],
+      "tools": ["terraform", "helm", "slurm"],
+      "cloud": ["aws", "gcp", "azure"],
+      "datastores": [],
+      "ml_ops": ["mlops", "inference", "monitoring"],
+      "languages": ["python", "go"],
+      "frameworks": ["tensorflow", "jax"]
+    },
+    "experience": {
+      "years_min": 7,
+      "years_max": null
+    },
+    "keywords": ["gpu", "h100", "b200", "multi-node"]
+  },
+
+  "evidence": {
+    "spans": [
+      {
+        "field": "job.title",
+        "source": "jsonld|meta|text|regex",
+        "text": "AI/ML Cloud Solution Architect",
+        "start": 1234,
+        "end": 1262,
+        "confidence": 0.9
+      }
+    ]
+  },
+
+  "quality": {
+    "overall_confidence": 0.78,
+    "missing_critical_fields": ["job.posted.date"],
+    "warnings": ["salary parsed from text; not found in jsonld"]
+  }
+}

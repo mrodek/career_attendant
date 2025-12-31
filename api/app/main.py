@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import Settings, get_cors_origins
 from .logger import logger
-from .routers import entries, auth, auth_page
+from .routers import entries, auth, auth_page, analyze
 from .auth.middleware import AuthMiddleware
 from .startup import init_db
 
@@ -51,3 +51,4 @@ def health():
 app.include_router(auth.router)
 app.include_router(auth_page.router)
 app.include_router(entries.router)
+app.include_router(analyze.router)

@@ -92,6 +92,11 @@ class Job(Base):
     # === Debug Data (for extraction debugging, not for production use) ===
     scraped_text_debug = Column(Text, nullable=True)  # Raw scraped text for debugging extraction
 
+    # === LLM-Generated Content ===
+    summary = Column(Text, nullable=True)  # 6-10 bullet job summary
+    summary_generated_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    embedding_id = Column(String(100), nullable=True)  # ChromaDB document ID
+
     # === Analytics ===
     saved_count = Column(Integer, nullable=False, server_default="0")
 

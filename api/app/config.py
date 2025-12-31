@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     # Frontend and extension configuration
     frontend_url: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
     extension_id: str = os.getenv("EXTENSION_ID", "")
+    
+    # LLM / AI configuration
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    openai_model: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    chroma_persist_dir: str = os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
 
     class Config:
         env_file = ".env"
