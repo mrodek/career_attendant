@@ -203,8 +203,9 @@ class TestCreateEntry:
             jobUrl="https://example.com/job/3",
             jobTitle="Senior Developer",
             companyName="Big Tech",
-            jobDescription="Build amazing things",
-            salaryRange="$200-300K",
+            salaryMin=200000,
+            salaryMax=300000,
+            salaryRaw="$200-300K",
             location="San Francisco, CA",
             remoteType="hybrid",
             roleType="full_time",
@@ -222,8 +223,9 @@ class TestCreateEntry:
         added_job = mock_db.add.call_args_list[0][0][0]
         assert added_job.job_title == "Senior Developer"
         assert added_job.company_name == "Big Tech"
-        assert added_job.job_description == "Build amazing things"
-        assert added_job.salary_range == "$200-300K"
+        assert added_job.salary_min == 200000
+        assert added_job.salary_max == 300000
+        assert added_job.salary_raw == "$200-300K"
         assert added_job.location == "San Francisco, CA"
         assert added_job.remote_type == "hybrid"
         assert added_job.role_type == "full_time"

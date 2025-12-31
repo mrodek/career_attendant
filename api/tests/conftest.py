@@ -2,14 +2,10 @@ import os
 import sys
 from pathlib import Path
 import pytest
-import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
-
-# Configure pytest-asyncio
-pytest_plugins = ('pytest_asyncio',)
 
 # Set test environment BEFORE importing app modules
 os.environ.setdefault("API_KEY", "dev_api_key")

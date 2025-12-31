@@ -95,26 +95,45 @@ async def list_entries(
     out_items = [
         {
             "id": str(saved.id),
-            # Nested job data
+            # Nested job data (new schema with parsed fields)
             "job": {
                 "id": str(job.id),
                 "jobUrl": job.job_url,
                 "jobTitle": job.job_title,
                 "companyName": job.company_name,
-                "jobDescription": job.job_description,
-                "salaryRange": job.salary_range,
+                # Parsed salary fields
+                "salaryMin": job.salary_min,
+                "salaryMax": job.salary_max,
+                "salaryCurrency": job.salary_currency,
+                "salaryPeriod": job.salary_period,
+                "salaryRaw": job.salary_raw,
+                # Location
                 "location": job.location,
+                "locationCountry": job.location_country,
+                "locationCity": job.location_city,
+                # Work arrangement
                 "remoteType": job.remote_type,
                 "roleType": job.role_type,
-                "experienceLevel": job.experience_level,
+                "seniority": job.seniority,
+                # Extracted skills
+                "requiredSkills": job.required_skills,
+                "preferredSkills": job.preferred_skills,
+                "yearsExperienceMin": job.years_experience_min,
+                "yearsExperienceMax": job.years_experience_max,
+                # Metadata
                 "companyLogoUrl": job.company_logo_url,
                 "industry": job.industry,
-                "requiredSkills": job.required_skills,
                 "postingDate": job.posting_date,
                 "expirationDate": job.expiration_date,
+                "easyApply": job.easy_apply,
                 "isActive": job.is_active,
                 "source": job.source,
+                "extractionConfidence": job.extraction_confidence,
                 "savedCount": job.saved_count,
+                # AI-Generated Content
+                "summary": job.summary,
+                "summaryGeneratedAt": job.summary_generated_at,
+                # Timestamps
                 "createdAt": job.created_at,
                 "updatedAt": job.updated_at,
             },
@@ -123,7 +142,7 @@ async def list_entries(
             "jobTitle": job.job_title,
             "companyName": job.company_name,
             "location": job.location,
-            "salaryRange": job.salary_range,
+            "salaryRaw": job.salary_raw,  # Display string
             "remoteType": job.remote_type,
             "roleType": job.role_type,
             # User-specific tracking

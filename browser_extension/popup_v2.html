@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Career Attendant</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <h1>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2Z"/>
+        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+      </svg>
+      Career Attendant
+      <span class="env-badge local" id="envBadge">LOCAL</span>
+    </h1>
+  </div>
+
+  <!-- Auth Section (hidden in dev mode) -->
+  <div class="auth-section" id="authSection">
+    <span class="auth-user" id="authUser">Not signed in</span>
+    <button class="auth-btn login" id="authButton">Sign In</button>
+  </div>
+
+  <!-- Progress Section -->
+  <div class="progress-section" id="progressSection">
+    <div class="progress-header">
+      <span class="progress-title" id="progressTitle">Analyzing job posting...</span>
+      <span class="progress-percent" id="progressPercent">0%</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-steps">
+      <div class="step" id="step-ingest" data-step="ingest">
+        <div class="step-icon">1</div>
+        <span class="step-label">Ingest</span>
+      </div>
+      <div class="step" id="step-preprocess" data-step="preprocess">
+        <div class="step-icon">2</div>
+        <span class="step-label">Parse</span>
+      </div>
+      <div class="step" id="step-extract" data-step="extract">
+        <div class="step-icon">3</div>
+        <span class="step-label">Extract</span>
+      </div>
+      <div class="step" id="step-summarize" data-step="summarize">
+        <div class="step-icon">4</div>
+        <span class="step-label">Summarize</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- URL Display -->
+  <div class="url-section">
+    <div class="url-display" id="currentUrl">Loading URL...</div>
+  </div>
+
+  <!-- Messages -->
+  <div class="message" id="messageBox"></div>
+
+  <!-- Form Section -->
+  <div class="form-section">
+    <div class="form-grid">
+      <!-- Job Title -->
+      <div class="form-group full-width" id="group-jobTitle">
+        <label>
+          Job Title
+          <span class="confidence-tooltip">
+            <span class="confidence-dot" id="conf-jobTitle"></span>
+          </span>
+        </label>
+        <input type="text" id="jobTitle" placeholder="Loading...">
+      </div>
+
+      <!-- Company -->
+      <div class="form-group" id="group-companyName">
+        <label>
+          Company
+          <span class="confidence-tooltip">
+            <span class="confidence-dot" id="conf-companyName"></span>
+          </span>
+        </label>
+        <input type="text" id="companyName" placeholder="Loading...">
+      </div>
+
+      <!-- Location -->
+      <div class="form-group" id="group-location">
+        <label>
+          Location
+          <span class="confidence-tooltip">
+            <span class="confidence-dot" id="conf-location"></span>
+          </span>
+        </label>
+        <input type="text" id="location" placeholder="Loading...">
+      </div>
+
+      <!-- Salary Min -->
+      <div class="form-group" id="group-salaryMin">
+        <label>
+          Salary Min
+          <span class="confidence-tooltip">
+            <span class="confidence-dot" id="conf-salary_min"></span>
+          </span>
+        </label>
+        <input type="text" id="salaryMin" placeholder="$0">
+      </div>
+
+      <!-- Salary Max -->
+      <div class="form-group" id="group-salaryMax">
+        <label>
+          Salary Max
+          <span class="confidence-tooltip">
+            <span class="confidence-dot" id="conf-salary_max"></span>
+          </span>
+        </label>
+        <input type="text" id="salaryMax" placeholder="$0">
+      </div>
+
+      <!-- Remote Type -->
+      <div class="form-group" id="group-remoteType">
+        <label>
+          Remote Type
+          <span class="confidence-tooltip">
+            <span class="confidence-dot" id="conf-remote_type"></span>
+          </span>
+        </label>
+        <select id="remoteType">
+          <option value="">Select...</option>
+          <option value="remote">Remote</option>
+          <option value="hybrid">Hybrid</option>
+          <option value="onsite">On-site</option>
+        </select>
+      </div>
+
+      <!-- Role Type -->
+      <div class="form-group" id="group-roleType">
+        <label>
+          Role Type
+          <span class="confidence-tooltip">
+            <span class="confidence-dot" id="conf-role_type"></span>
+          </span>
+        </label>
+        <select id="roleType">
+          <option value="">Select...</option>
+          <option value="full_time">Full-time</option>
+          <option value="part_time">Part-time</option>
+          <option value="contract">Contract</option>
+        </select>
+      </div>
+
+      <!-- Seniority -->
+      <div class="form-group" id="group-seniority">
+        <label>
+          Seniority
+          <span class="confidence-tooltip">
+            <span class="confidence-dot" id="conf-seniority"></span>
+          </span>
+        </label>
+        <select id="seniority">
+          <option value="">Select...</option>
+          <option value="intern">Intern</option>
+          <option value="junior">Junior</option>
+          <option value="mid">Mid-level</option>
+          <option value="senior">Senior</option>
+          <option value="staff">Staff</option>
+          <option value="principal">Principal</option>
+          <option value="director">Director</option>
+          <option value="vp">VP</option>
+          <option value="cxo">C-Level</option>
+        </select>
+      </div>
+
+      <!-- Experience -->
+      <div class="form-group" id="group-experience">
+        <label>
+          Years Exp.
+          <span class="confidence-tooltip">
+            <span class="confidence-dot" id="conf-years_experience_min"></span>
+          </span>
+        </label>
+        <input type="text" id="yearsExperience" placeholder="e.g., 5+">
+      </div>
+
+      <!-- Skills -->
+      <div class="form-group full-width" id="group-skills">
+        <label>
+          Required Skills
+          <span class="confidence-tooltip">
+            <span class="confidence-dot" id="conf-required_skills"></span>
+          </span>
+        </label>
+        <div class="skills-container" id="skillsContainer">
+          <!-- Skills will be populated here -->
+        </div>
+      </div>
+
+      <!-- Interest Level -->
+      <div class="form-group full-width">
+        <label>Your Interest Level</label>
+        <div class="interest-group">
+          <button type="button" class="interest-btn" data-level="low">Low</button>
+          <button type="button" class="interest-btn active" data-level="medium">Medium</button>
+          <button type="button" class="interest-btn" data-level="high">High</button>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="form-group full-width">
+        <label>Notes</label>
+        <textarea id="notes" placeholder="Add your notes..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Section -->
+  <div class="summary-section">
+    <div class="summary-card">
+      <div class="summary-header">
+        <h3>AI Summary</h3>
+      </div>
+      <div class="summary-content" id="summaryContent">
+        <div class="loading">
+          <div class="spinner"></div>
+          <span style="margin-left: 8px;">Generating summary...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="actions">
+    <button type="button" class="btn btn-secondary" id="retryBtn" style="display: none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+        <path d="M21 3v5h-5"/>
+      </svg>
+      Retry
+    </button>
+    <button type="button" class="btn btn-primary" id="saveBtn" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+        <polyline points="17,21 17,13 7,13 7,21"/>
+        <polyline points="7,3 7,8 15,8"/>
+      </svg>
+      Save Job
+    </button>
+  </div>
+
+  <script src="popup_v2.js"></script>
+</body>
+</html>
