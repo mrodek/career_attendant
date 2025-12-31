@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, ExternalLink, Calendar, MapPin, DollarSign, Briefcase } from 'lucide-react'
+import { X, ExternalLink, Calendar, MapPin, DollarSign, Briefcase, Sparkles, Code, Building2, Clock, TrendingUp } from 'lucide-react'
 import type { SavedJob } from '../../types/job'
 import { useUpdateJob } from '../../hooks/use-jobs'
 
@@ -58,6 +58,49 @@ export default function JobDetailPanel({ job, onClose }: JobDetailPanelProps) {
     })
   }
 
+  const formatSalary = (min: number | null, max: number | null, currency: string | null) => {
+    if (!min && !max) return null
+    const fmt = (n: number) => {
+      if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`
+      if (n >= 1000) return `${Math.round(n / 1000)}K`
+      return n.toString()
+    }
+    const curr = currency || 'USD'
+    const symbol = curr === 'USD' ? '$' : curr === 'GBP' ? '£' : curr === 'EUR' ? '€' : `${curr} `
+    if (min && max) return `${symbol}${fmt(min)} - ${symbol}${fmt(max)}`
+    if (min) return `${symbol}${fmt(min)}+`
+    if (max) return `Up to ${symbol}${fmt(max)}`
+    return null
+  }
+
+  const formatSeniority = (seniority: string | null) => {
+    if (!seniority) return null
+    const labels: Record<string, string> = {
+      intern: 'Intern',
+      junior: 'Junior',
+      mid: 'Mid-Level',
+      senior: 'Senior',
+      staff: 'Staff',
+      principal: 'Principal',
+      director: 'Director',
+      vp: 'VP',
+      cxo: 'C-Level',
+    }
+    return labels[seniority] || seniority
+  }
+
+  const formatExperience = (min: number | null, max: number | null) => {
+    if (!min && !max) return null
+    if (min && max) return `${min}-${max} years`
+    if (min) return `${min}+ years`
+    if (max) return `Up to ${max} years`
+    return null
+  }
+
+  const salaryDisplay = formatSalary(job.job.salaryMin, job.job.salaryMax, job.job.salaryCurrency)
+  const seniorityDisplay = formatSeniority(job.job.seniority)
+  const experienceDisplay = formatExperience(job.job.yearsExperienceMin, job.job.yearsExperienceMax)
+
   return (
     <div className="fixed inset-0 bg-black/20 flex justify-end z-50">
       {/* Backdrop click to close */}
@@ -90,16 +133,28 @@ export default function JobDetailPanel({ job, onClose }: JobDetailPanelProps) {
                 <span>{job.job.location}</span>
               </div>
             )}
-            {job.job.salaryRange && (
+            {salaryDisplay && (
               <div className="flex items-center gap-1">
                 <DollarSign size={14} />
-                <span>{job.job.salaryRange}</span>
+                <span>{salaryDisplay}</span>
               </div>
             )}
             {job.job.remoteType && (
               <div className="flex items-center gap-1">
                 <Briefcase size={14} />
-                <span>{job.job.remoteType}</span>
+                <span className="capitalize">{job.job.remoteType}</span>
+              </div>
+            )}
+            {seniorityDisplay && (
+              <div className="flex items-center gap-1">
+                <TrendingUp size={14} />
+                <span>{seniorityDisplay}</span>
+              </div>
+            )}
+            {job.job.industry && (
+              <div className="flex items-center gap-1">
+                <Building2 size={14} />
+                <span>{job.job.industry}</span>
               </div>
             )}
             <div className="flex items-center gap-1">
@@ -170,6 +225,99 @@ export default function JobDetailPanel({ job, onClose }: JobDetailPanelProps) {
             </div>
           </section>
 
+          {/* AI Summary */}
+          {job.job.summary && (
+            <section>
+              <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <Sparkles size={14} className="text-purple-500" />
+                AI Summary
+              </h3>
+              <div className="text-sm text-slate-700 bg-gradient-to-br from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-100">
+                <div className="prose prose-sm prose-slate max-w-none">
+                  {job.job.summary.split('\n').map((line, i) => {
+                    if (line.startsWith('## ')) {
+                      return <h4 key={i} className="font-semibold text-slate-800 mt-3 mb-1">{line.replace('## ', '')}</h4>
+                    }
+                    if (line.startsWith('- ')) {
+                      return <p key={i} className="ml-4 my-0.5">• {line.replace('- ', '')}</p>
+                    }
+                    if (line.startsWith('# ')) {
+                      return <h3 key={i} className="font-bold text-slate-900 mb-2">{line.replace('# ', '')}</h3>
+                    }
+                    if (line.trim()) {
+                      return <p key={i} className="my-1">{line}</p>
+                    }
+                    return null
+                  })}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Job Signals */}
+          <section>
+            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+              <Code size={14} className="text-blue-500" />
+              Job Signals
+            </h3>
+            <div className="space-y-4">
+              {/* Experience & Role Type */}
+              <div className="grid grid-cols-2 gap-4">
+                {experienceDisplay && (
+                  <div className="bg-slate-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
+                      <Clock size={12} />
+                      Experience
+                    </div>
+                    <div className="font-medium text-slate-800">{experienceDisplay}</div>
+                  </div>
+                )}
+                {job.job.roleType && (
+                  <div className="bg-slate-50 p-3 rounded-lg">
+                    <div className="text-slate-500 text-xs mb-1">Role Type</div>
+                    <div className="font-medium text-slate-800 capitalize">
+                      {job.job.roleType.replace('_', ' ')}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Required Skills */}
+              {job.job.requiredSkills && job.job.requiredSkills.length > 0 && (
+                <div>
+                  <div className="text-xs text-slate-500 mb-2">Required Skills</div>
+                  <div className="flex flex-wrap gap-2">
+                    {job.job.requiredSkills.map((skill, i) => (
+                      <span
+                        key={i}
+                        className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Preferred Skills */}
+              {job.job.preferredSkills && job.job.preferredSkills.length > 0 && (
+                <div>
+                  <div className="text-xs text-slate-500 mb-2">Nice to Have</div>
+                  <div className="flex flex-wrap gap-2">
+                    {job.job.preferredSkills.map((skill, i) => (
+                      <span
+                        key={i}
+                        className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
           {/* Notes section */}
           <section>
             <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">
@@ -183,18 +331,6 @@ export default function JobDetailPanel({ job, onClose }: JobDetailPanelProps) {
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
           </section>
-
-          {/* Job Description */}
-          {job.job.jobDescription && (
-            <section>
-              <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">
-                Job Description
-              </h3>
-              <div className="text-sm text-slate-600 whitespace-pre-wrap bg-slate-50 p-4 rounded-lg max-h-64 overflow-auto">
-                {job.job.jobDescription}
-              </div>
-            </section>
-          )}
 
           {/* Job Fit Reason */}
           {job.jobFitReason && (

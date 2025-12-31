@@ -69,6 +69,22 @@ def persist_job_artifacts(
                     job.salary_min = jobdoc["salary_min"]
                 if jobdoc.get("salary_max"):
                     job.salary_max = jobdoc["salary_max"]
+                if jobdoc.get("salary_currency"):
+                    job.salary_currency = jobdoc["salary_currency"]
+                if jobdoc.get("salary_period"):
+                    job.salary_period = jobdoc["salary_period"]
+                
+                # Posting date
+                if jobdoc.get("posting_date"):
+                    from datetime import date
+                    pd = jobdoc["posting_date"]
+                    if isinstance(pd, str):
+                        try:
+                            job.posting_date = date.fromisoformat(pd)
+                        except ValueError:
+                            pass  # Invalid date format, skip
+                    elif isinstance(pd, date):
+                        job.posting_date = pd
                 
                 # Experience & seniority
                 if jobdoc.get("seniority"):
@@ -89,6 +105,10 @@ def persist_job_artifacts(
                     job.remote_type = jobdoc["remote_type"]
                 if jobdoc.get("role_type"):
                     job.role_type = jobdoc["role_type"]
+                
+                # Industry
+                if jobdoc.get("industry"):
+                    job.industry = jobdoc["industry"]
                 
                 # Save summary
                 if job_summary:

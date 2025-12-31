@@ -87,6 +87,11 @@ class JobOut(BaseModel):
     source: Optional[str] = None
     extractionConfidence: Optional[int] = None
     savedCount: int = 0
+    
+    # AI-Generated Content
+    summary: Optional[str] = None
+    summaryGeneratedAt: Optional[datetime] = None
+    
     createdAt: datetime
     updatedAt: datetime
 
@@ -134,6 +139,9 @@ class SavedJobIn(BaseModel):
     
     # Debug (for debugging extraction - not for production use)
     scrapedTextDebug: Optional[str] = None  # Raw scraped text for debugging
+    
+    # LLM-generated content (from streaming extraction)
+    summary: Optional[str] = None  # AI-generated job summary
 
     # User-specific tracking fields
     interestLevel: Optional[Literal['high', 'medium', 'low']] = None

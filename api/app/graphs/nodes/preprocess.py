@@ -14,11 +14,12 @@ from ..state import JobIntakeState, SegmentedText, DocStats
 # Common section headers in job postings
 SECTION_PATTERNS = [
     (r"(?i)\b(about\s+(?:the\s+)?(?:job|role|position|opportunity))\b", "about"),
-    (r"(?i)\b(responsibilities|what\s+you(?:'ll)?\s+do|your\s+role)\b", "responsibilities"),
-    (r"(?i)\b(requirements|qualifications|what\s+(?:we(?:'re)?\s+)?(?:you\s+)?need|must\s+have)\b", "requirements"),
+    (r"(?i)\b(responsibilities|what\s+you(?:'ll)?\s+(?:do|be\s+doing)|your\s+role)\b", "responsibilities"),
+    (r"(?i)\b(requirements|qualifications|what\s+you(?:'ll)?\s+need|what\s+we(?:'re)?\s+looking\s+for|must\s+have)\b", "requirements"),
     (r"(?i)\b(nice\s+to\s+have|preferred|bonus|ideal)\b", "qualifications"),
-    (r"(?i)\b(benefits|perks|what\s+we\s+offer|compensation)\b", "benefits"),
+    (r"(?i)\b(benefits|perks|what\s+we\s+offer|compensation|salary|pay\s+range|why\s+(?:is\s+this|join|work))\b", "benefits"),
     (r"(?i)\b(about\s+(?:the\s+)?company|about\s+us|who\s+we\s+are)\b", "company_info"),
+    (r"(?i)\b(additional\s+information|other\s+information)\b", "additional"),
 ]
 
 
@@ -26,6 +27,10 @@ def clean_text(text: str) -> str:
     """Clean and normalize the raw text."""
     if not text:
         return ""
+    
+    # Decode common HTML entities
+    import html
+    text = html.unescape(text)
     
     # Normalize whitespace
     text = re.sub(r'\s+', ' ', text)

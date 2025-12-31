@@ -105,6 +105,19 @@ export default function JobsTable({ jobs, onSelectJob, onDeleteJob }: JobsTableP
     return str.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
   }
 
+  const formatSalary = (min: number | null, max: number | null) => {
+    if (!min && !max) return '—'
+    const fmt = (n: number) => {
+      if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`
+      if (n >= 1000) return `${Math.round(n / 1000)}K`
+      return n.toString()
+    }
+    if (min && max) return `$${fmt(min)}-${fmt(max)}`
+    if (min) return `$${fmt(min)}+`
+    if (max) return `Up to $${fmt(max)}`
+    return '—'
+  }
+
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
     if (confirm('Are you sure you want to delete this job?')) {
@@ -132,6 +145,9 @@ export default function JobsTable({ jobs, onSelectJob, onDeleteJob }: JobsTableP
               <div className="flex items-center gap-2">
                 Company <SortIcon field="companyName" />
               </div>
+            </th>
+            <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+              Salary
             </th>
             <th
               className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-slate-100"
@@ -185,6 +201,9 @@ export default function JobsTable({ jobs, onSelectJob, onDeleteJob }: JobsTableP
               </td>
               <td className="px-6 py-4 text-slate-600">
                 {savedJob.job.companyName || '—'}
+              </td>
+              <td className="px-6 py-4 text-slate-600 text-sm">
+                {formatSalary(savedJob.job.salaryMin, savedJob.job.salaryMax)}
               </td>
               <td className="px-6 py-4">
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${getInterestColor(savedJob.interestLevel)}`}>

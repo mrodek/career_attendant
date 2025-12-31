@@ -130,6 +130,10 @@ async def list_entries(
                 "source": job.source,
                 "extractionConfidence": job.extraction_confidence,
                 "savedCount": job.saved_count,
+                # AI-Generated Content
+                "summary": job.summary,
+                "summaryGeneratedAt": job.summary_generated_at,
+                # Timestamps
                 "createdAt": job.created_at,
                 "updatedAt": job.updated_at,
             },

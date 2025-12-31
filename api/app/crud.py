@@ -116,6 +116,13 @@ def get_or_create_job(db: Session, payload: EntryIn) -> Tuple[Job, bool]:
             job.scraped_text_debug = payload.scrapedTextDebug
             updated = True
         
+        # LLM-generated summary (always update if provided - newer is better)
+        if getattr(payload, 'summary', None):
+            job.summary = payload.summary
+            from datetime import datetime, timezone
+            job.summary_generated_at = datetime.now(timezone.utc)
+            updated = True
+        
         if updated:
             db.flush()
         
@@ -153,6 +160,9 @@ def get_or_create_job(db: Session, payload: EntryIn) -> Tuple[Job, bool]:
         extracted_at=datetime.now(timezone.utc),
         # Debug
         scraped_text_debug=getattr(payload, 'scrapedTextDebug', None),
+        # LLM-generated content
+        summary=getattr(payload, 'summary', None),
+        summary_generated_at=datetime.now(timezone.utc) if getattr(payload, 'summary', None) else None,
     )
     db.add(job)
     db.flush()
