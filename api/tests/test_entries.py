@@ -130,7 +130,9 @@ def test_given_saved_entry_when_list_entries_then_returns_nested_job_data(client
         "jobUrl": unique_url,
         "jobTitle": "Nested Test Job",
         "companyName": "Test Corp",
-        "salaryRange": "$150-200K",
+        "salaryMin": 150000,
+        "salaryMax": 200000,
+        "salaryRaw": "$150-200K",
         "location": "Remote",
         "remoteType": "remote",
         "roleType": "full_time",
@@ -156,7 +158,9 @@ def test_given_saved_entry_when_list_entries_then_returns_nested_job_data(client
     assert job["jobUrl"] == unique_url
     assert job["jobTitle"] == "Nested Test Job"
     assert job["companyName"] == "Test Corp"
-    assert job["salaryRange"] == "$150-200K"
+    assert job["salaryMin"] == 150000
+    assert job["salaryMax"] == 200000
+    assert job["salaryRaw"] == "$150-200K"
     assert job["remoteType"] == "remote"
     assert job["roleType"] == "full_time"
     
