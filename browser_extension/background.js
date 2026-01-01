@@ -2,7 +2,7 @@
 
 const CONFIG = {
   // Set to true to force production API
-  USE_PRODUCTION: false,
+  USE_PRODUCTION: true,
   API_URLS: [
     'http://localhost:8080',
     'https://careerattendant-production.up.railway.app'

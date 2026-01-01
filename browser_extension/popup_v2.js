@@ -3,7 +3,7 @@
 // ==========================================================================
 
 const CONFIG = {
-  USE_PRODUCTION: false,
+  USE_PRODUCTION: true,
   PRODUCTION_URL: 'https://careerattendant-production.up.railway.app',
   LOCAL_URL: 'http://localhost:8080',
 };
