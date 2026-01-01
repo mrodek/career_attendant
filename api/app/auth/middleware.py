@@ -45,7 +45,7 @@ class AuthMiddleware:
     
     async def __call__(self, request: Request, call_next):
         # Skip auth for public endpoints
-        public_paths = ['/docs', '/openapi.json', '/health', '/api/auth/webhook', '/auth/login', '/auth/callback']
+        public_paths = ['/docs', '/openapi.json', '/health', '/api/auth/webhook', '/auth/login', '/auth/callback', '/extract']
         
         # Check if path starts with any public path
         if any(request.url.path.startswith(path) for path in public_paths):
