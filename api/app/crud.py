@@ -129,7 +129,9 @@ def get_or_create_job(db: Session, payload: EntryIn) -> Tuple[Job, bool]:
         return job, False
     
     # Create new job with derived fields only
+    import uuid
     job = Job(
+        id=str(uuid.uuid4()),  # Generate UUID as string
         job_url=payload.jobUrl,
         job_title=payload.jobTitle,
         company_name=payload.companyName,
