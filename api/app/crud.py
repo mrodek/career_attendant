@@ -163,6 +163,8 @@ def get_or_create_job(db: Session, payload: EntryIn) -> Tuple[Job, bool]:
         # LLM-generated content
         summary=getattr(payload, 'summary', None),
         summary_generated_at=datetime.now(timezone.utc) if getattr(payload, 'summary', None) else None,
+        # Timestamps
+        updated_at=datetime.now(timezone.utc),
     )
     db.add(job)
     db.flush()
