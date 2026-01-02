@@ -45,7 +45,7 @@ class User(Base):
 class Job(Base):
     __tablename__ = "jobs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # === Core Job Fields (Factual, non-copyrightable) ===
     job_title = Column(String(500), nullable=True)
