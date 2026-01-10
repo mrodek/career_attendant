@@ -13,7 +13,12 @@ def auth_error_response(status_code: int, detail: str) -> JSONResponse:
     """Return a JSON error response for middleware (can't use HTTPException)"""
     return JSONResponse(
         status_code=status_code,
-        content={"detail": detail}
+        content={"detail": detail},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        }
     )
 
 settings = Settings()
