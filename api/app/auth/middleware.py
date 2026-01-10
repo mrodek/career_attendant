@@ -6,6 +6,7 @@ import httpx
 from ..config import Settings
 from ..logger import logger
 import json
+from datetime import datetime, timedelta
 
 def auth_error_response(status_code: int, detail: str) -> JSONResponse:
     """Return a JSON error response for middleware (can't use HTTPException)"""
@@ -16,28 +17,41 @@ def auth_error_response(status_code: int, detail: str) -> JSONResponse:
 
 settings = Settings()
 
-# Cache for JWKS keys
+# Cache for JWKS keys with TTL
 _jwks_cache = None
+_jwks_cache_expires_at = None
+JWKS_CACHE_TTL_HOURS = 1  # Refresh cache every hour
 
-async def get_jwks_keys():
-    """Fetch JWKS keys from Clerk"""
-    global _jwks_cache
+async def get_jwks_keys(force_refresh: bool = False):
+    """Fetch JWKS keys from Clerk with TTL-based caching"""
+    global _jwks_cache, _jwks_cache_expires_at
     
-    if _jwks_cache is not None:
-        return _jwks_cache
+    now = datetime.utcnow()
+    
+    # Return cached keys if still valid and not forcing refresh
+    if not force_refresh and _jwks_cache is not None and _jwks_cache_expires_at:
+        if now < _jwks_cache_expires_at:
+            logger.debug("Using cached JWKS keys")
+            return _jwks_cache
     
     if not settings.clerk_jwks_url:
         return None
     
     try:
+        logger.info("Fetching fresh JWKS keys from Clerk")
         async with httpx.AsyncClient() as client:
             response = await client.get(settings.clerk_jwks_url)
             response.raise_for_status()
             jwks = response.json()
             _jwks_cache = jwks
+            _jwks_cache_expires_at = now + timedelta(hours=JWKS_CACHE_TTL_HOURS)
             return jwks
     except Exception as e:
         logger.error(f"Failed to fetch JWKS: {e}")
+        # Return stale cache if available when fetch fails
+        if _jwks_cache is not None:
+            logger.warning("Using stale JWKS cache due to fetch failure")
+            return _jwks_cache
         return None
 
 class AuthMiddleware:
@@ -62,6 +76,7 @@ class AuthMiddleware:
         # Extract token from header
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
+            logger.warning(f"Auth failed for {request.url.path}: Missing or invalid authorization header")
             return auth_error_response(
                 status.HTTP_401_UNAUTHORIZED,
                 "Missing or invalid authorization header"
@@ -92,11 +107,10 @@ class AuthMiddleware:
             key = next((jwk for jwk in jwks.get('keys', []) if jwk.get('kid') == kid), None)
 
             # If key is not found, it might be because the JWKS cache is stale.
-            # Clear the cache and try fetching the keys again.
+            # Force refresh the cache and try again.
             if not key:
-                global _jwks_cache
-                _jwks_cache = None  # Invalidate the cache
-                jwks = await get_jwks_keys()
+                logger.warning(f"Key {kid} not found in cache, refreshing JWKS")
+                jwks = await get_jwks_keys(force_refresh=True)
                 if jwks:
                     key = next((jwk for jwk in jwks.get('keys', []) if jwk.get('kid') == kid), None)
 
@@ -120,10 +134,16 @@ class AuthMiddleware:
             request.state.session_id = payload.get('sid')
             request.state.user_email = payload.get('email')
             
-            logger.debug(f"Authenticated user: {request.state.user_id}")
+            logger.info(f"✓ Auth successful for {request.url.path} - User: {request.state.user_id}")
             
+        except jwt.ExpiredSignatureError as e:
+            logger.warning(f"JWT expired for {request.url.path}: {str(e)}")
+            return auth_error_response(
+                status.HTTP_401_UNAUTHORIZED,
+                "Token has expired"
+            )
         except JWTError as e:
-            logger.error(f"JWT validation failed: {str(e)}")
+            logger.error(f"JWT validation failed for {request.url.path}: {str(e)}")
             return auth_error_response(
                 status.HTTP_401_UNAUTHORIZED,
                 f"Invalid token: {str(e)}"
