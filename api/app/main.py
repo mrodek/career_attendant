@@ -18,8 +18,7 @@ if settings.extension_id:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins if settings.cors_origins != "*" else ["*"],
-    allow_origin_regex=r".*" if settings.cors_origins == "*" else None,
-    allow_credentials=True,
+    allow_credentials=settings.cors_origins != "*",  # Can't use credentials with wildcard
     allow_methods=["*"],
     allow_headers=["*"],
 )
