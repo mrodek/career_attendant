@@ -1,12 +1,12 @@
 [build]
 builder = "NIXPACKS"
+buildCommand = "npm install && npm run build"
 
 [deploy]
 startCommand = "npx serve dist -s -p $PORT"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
-[env]
-# These will be set in Railway dashboard
-# VITE_CLERK_PUBLISHABLE_KEY = "pk_test_..."
-# VITE_API_URL = "https://careerattendant-production.up.railway.app"
+[nixpacks]
+# Ensure Node.js 18+ is used
+nodeVersion = "18"
