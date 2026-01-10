@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from jose import jwt, JWTError
 from jose.backends import RSAKey
 import httpx
+import hashlib
 from ..config import Settings
 from ..logger import logger
 import json
@@ -59,7 +60,7 @@ class AuthMiddleware:
     
     async def __call__(self, request: Request, call_next):
         # Skip auth for public endpoints
-        public_paths = ['/docs', '/openapi.json', '/health', '/api/auth/webhook', '/auth/login', '/auth/callback', '/extract']
+        public_paths = ['/docs', '/openapi.json', '/health', '/api/auth/webhook', '/api/auth/create-session', '/auth/login', '/auth/callback', '/extract']
         
         # Check if path starts with any public path
         if any(request.url.path.startswith(path) for path in public_paths):
@@ -84,70 +85,115 @@ class AuthMiddleware:
         
         token = auth_header.split(' ')[1]
         
-        try:
-            # Get unverified header to find the key ID
-            unverified_header = jwt.get_unverified_header(token)
-            kid = unverified_header.get('kid')
-            
-            if not kid:
+        # Try to determine if this is a JWT or session token
+        # JWTs have a specific format (header.payload.signature)
+        # Session tokens are random strings
+        is_jwt = token.count('.') == 2
+        
+        if is_jwt:
+            # Validate as Clerk JWT
+            try:
+                # Get unverified header to find the key ID
+                unverified_header = jwt.get_unverified_header(token)
+                kid = unverified_header.get('kid')
+                
+                if not kid:
+                    return auth_error_response(
+                        status.HTTP_401_UNAUTHORIZED,
+                        "Token missing key ID"
+                    )
+                
+                # Fetch JWKS keys
+                jwks = await get_jwks_keys()
+                if not jwks:
+                    return auth_error_response(
+                        status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        "Unable to fetch JWKS keys"
+                    )
+                
+                # Find the matching key
+                key = next((jwk for jwk in jwks.get('keys', []) if jwk.get('kid') == kid), None)
+
+                # If key is not found, it might be because the JWKS cache is stale.
+                # Force refresh the cache and try again.
+                if not key:
+                    logger.warning(f"Key {kid} not found in cache, refreshing JWKS")
+                    jwks = await get_jwks_keys(force_refresh=True)
+                    if jwks:
+                        key = next((jwk for jwk in jwks.get('keys', []) if jwk.get('kid') == kid), None)
+
+                if not key:
+                    logger.error(f"Unable to find matching key for kid: {kid}")
+                    return auth_error_response(
+                        status.HTTP_401_UNAUTHORIZED,
+                        "Unable to find a matching public key to verify the token."
+                    )
+                
+                # Decode and verify JWT using the public key from JWKS
+                payload = jwt.decode(
+                    token,
+                    key,
+                    algorithms=['RS256'],
+                    options={"verify_aud": False}
+                )
+                
+                # Add user context to request state
+                request.state.user_id = payload.get('sub')
+                request.state.session_id = payload.get('sid')
+                request.state.user_email = payload.get('email')
+                
+                logger.info(f"✓ JWT auth successful for {request.url.path} - User: {request.state.user_id}")
+                
+            except jwt.ExpiredSignatureError as e:
+                logger.warning(f"JWT expired for {request.url.path}: {str(e)}")
                 return auth_error_response(
                     status.HTTP_401_UNAUTHORIZED,
-                    "Token missing key ID"
+                    "Token has expired"
                 )
-            
-            # Fetch JWKS keys
-            jwks = await get_jwks_keys()
-            if not jwks:
-                return auth_error_response(
-                    status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    "Unable to fetch JWKS keys"
-                )
-            
-            # Find the matching key
-            key = next((jwk for jwk in jwks.get('keys', []) if jwk.get('kid') == kid), None)
-
-            # If key is not found, it might be because the JWKS cache is stale.
-            # Force refresh the cache and try again.
-            if not key:
-                logger.warning(f"Key {kid} not found in cache, refreshing JWKS")
-                jwks = await get_jwks_keys(force_refresh=True)
-                if jwks:
-                    key = next((jwk for jwk in jwks.get('keys', []) if jwk.get('kid') == kid), None)
-
-            if not key:
-                logger.error(f"Unable to find matching key for kid: {kid}")
+            except JWTError as e:
+                logger.error(f"JWT validation failed for {request.url.path}: {str(e)}")
                 return auth_error_response(
                     status.HTTP_401_UNAUTHORIZED,
-                    "Unable to find a matching public key to verify the token."
+                    f"Invalid token: {str(e)}"
                 )
+        else:
+            # Validate as session token
+            from ..db import get_db
+            from ..models import UserSession
             
-            # Decode and verify JWT using the public key from JWKS
-            payload = jwt.decode(
-                token,
-                key,
-                algorithms=['RS256'],
-                options={"verify_aud": False}
-            )
+            # Get database session
+            db = next(get_db())
             
-            # Add user context to request state
-            request.state.user_id = payload.get('sub')
-            request.state.session_id = payload.get('sid')
-            request.state.user_email = payload.get('email')
-            
-            logger.info(f"✓ Auth successful for {request.url.path} - User: {request.state.user_id}")
-            
-        except jwt.ExpiredSignatureError as e:
-            logger.warning(f"JWT expired for {request.url.path}: {str(e)}")
-            return auth_error_response(
-                status.HTTP_401_UNAUTHORIZED,
-                "Token has expired"
-            )
-        except JWTError as e:
-            logger.error(f"JWT validation failed for {request.url.path}: {str(e)}")
-            return auth_error_response(
-                status.HTTP_401_UNAUTHORIZED,
-                f"Invalid token: {str(e)}"
-            )
+            try:
+                # Hash the token to compare with stored hash
+                token_hash = hashlib.sha256(token.encode()).hexdigest()
+                
+                # Look up session in database
+                session = db.query(UserSession).filter(
+                    UserSession.session_token == token_hash,
+                    UserSession.expires_at > datetime.utcnow()
+                ).first()
+                
+                if not session:
+                    logger.warning(f"Session token invalid or expired for {request.url.path}")
+                    return auth_error_response(
+                        status.HTTP_401_UNAUTHORIZED,
+                        "Invalid or expired session token"
+                    )
+                
+                # Add user context to request state
+                request.state.user_id = session.user_id
+                request.state.session_id = str(session.id)
+                
+                # Get user email from user table
+                from ..models import User
+                user = db.query(User).filter(User.id == session.user_id).first()
+                request.state.user_email = user.email if user else None
+                
+                logger.info(f"✓ Session auth successful for {request.url.path} - User: {request.state.user_id}")
+                
+            finally:
+                db.close()
         
         response = await call_next(request)
         return response

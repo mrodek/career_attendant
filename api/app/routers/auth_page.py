@@ -209,22 +209,40 @@ async def auth_login_page(request: Request, extension_id: str = None):
                 
                 // Check if already signed in
                 if (clerk.user) {{
-                    statusEl.innerHTML = '<div class="success">Already signed in! Getting token...</div>';
+                    statusEl.innerHTML = '<div class="success">Already signed in! Creating session...</div>';
                     
-                    // Get JWT token with longer expiration (60 minutes instead of default 60 seconds)
-                    // This helps prevent frequent authentication failures
-                    const token = await clerk.session.getToken({{
-                        leewayInSeconds: 30,  // Allow 30 seconds of leeway for clock skew
-                        skipCache: true  // Always get a fresh token
-                    }});
-                    const userId = clerk.user.id;
-                    const email = clerk.user.primaryEmailAddress?.emailAddress || '';
-                    
-                    // Redirect to callback page with token (extension watches for this URL)
-                    const redirectUrl = `${{CALLBACK_URL}}?token=${{encodeURIComponent(token)}}&userId=${{encodeURIComponent(userId)}}&email=${{encodeURIComponent(email)}}`;
-                    console.log('Redirecting to:', redirectUrl);
-                    statusEl.innerHTML = '<div class="success">Signed in! Redirecting...</div>';
-                    window.location.href = redirectUrl;
+                    try {{
+                        // Get JWT token from Clerk
+                        const clerkJWT = await clerk.session.getToken({{
+                            skipCache: true  // Always get a fresh token
+                        }});
+                        const userId = clerk.user.id;
+                        const email = clerk.user.primaryEmailAddress?.emailAddress || '';
+                        
+                        // Exchange Clerk JWT for long-lived session token
+                        const response = await fetch('/api/auth/create-session', {{
+                            method: 'POST',
+                            headers: {{
+                                'Content-Type': 'application/json'
+                            }},
+                            body: JSON.stringify({{ clerk_jwt: clerkJWT }})
+                        }});
+                        
+                        if (!response.ok) {{
+                            throw new Error('Failed to create session');
+                        }}
+                        
+                        const {{ session_token, expires_at }} = await response.json();
+                        
+                        // Redirect to callback page with session token (extension watches for this URL)
+                        const redirectUrl = `${{CALLBACK_URL}}?token=${{encodeURIComponent(session_token)}}&userId=${{encodeURIComponent(userId)}}&email=${{encodeURIComponent(email)}}`;
+                        console.log('Session created, redirecting to:', redirectUrl);
+                        statusEl.innerHTML = '<div class="success">Session created! Redirecting...</div>';
+                        window.location.href = redirectUrl;
+                    }} catch (error) {{
+                        console.error('Session creation error:', error);
+                        statusEl.innerHTML = `<div class="error">Error creating session: ${{error.message}}</div>`;
+                    }}
                 }} else {{
                     // Show sign-in UI
                     clerk.mountSignIn(containerEl, {{

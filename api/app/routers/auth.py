@@ -2,10 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime, timedelta
+import secrets
+import hashlib
 from ..auth.clerk_client import clerk_client
 from ..auth.dependencies import get_current_user_id, get_current_user
 from ..db import get_db
-from ..models import User
+from ..models import User, UserSession
 from ..logger import logger
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
@@ -17,6 +20,14 @@ class SessionValidationResponse(BaseModel):
     valid: bool
     user_id: Optional[str] = None
     expires_at: Optional[str] = None
+
+class CreateSessionRequest(BaseModel):
+    clerk_jwt: str
+
+class CreateSessionResponse(BaseModel):
+    session_token: str
+    user_id: str
+    expires_at: str
 
 @router.post("/webhook/clerk")
 async def clerk_webhook(request: Request, db: Session = Depends(get_db)):
@@ -130,3 +141,133 @@ async def sync_user_from_clerk(
             "full_name": user.full_name
         }
     }
+
+@router.post("/create-session", response_model=CreateSessionResponse)
+async def create_session(
+    request: CreateSessionRequest,
+    db: Session = Depends(get_db),
+    http_request: Request = None
+):
+    """
+    Exchange a Clerk JWT for a long-lived session token.
+    This is the proper way to authenticate browser extensions.
+    
+    Flow:
+    1. Extension gets Clerk JWT from auth page (one-time)
+    2. Calls this endpoint to exchange JWT for session token
+    3. Session token is valid for 7 days
+    4. Extension uses session token for all subsequent requests
+    """
+    try:
+        # Validate the Clerk JWT using the middleware's JWT validation
+        from jose import jwt
+        from ..auth.middleware import get_jwks_keys
+        
+        # Get unverified header to find the key ID
+        unverified_header = jwt.get_unverified_header(request.clerk_jwt)
+        kid = unverified_header.get('kid')
+        
+        if not kid:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid JWT: missing key ID"
+            )
+        
+        # Fetch JWKS keys
+        jwks = await get_jwks_keys()
+        if not jwks:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Unable to fetch JWKS keys"
+            )
+        
+        # Find the matching key
+        key = next((jwk for jwk in jwks.get('keys', []) if jwk.get('kid') == kid), None)
+        
+        if not key:
+            # Try refreshing the cache
+            jwks = await get_jwks_keys(force_refresh=True)
+            if jwks:
+                key = next((jwk for jwk in jwks.get('keys', []) if jwk.get('kid') == kid), None)
+        
+        if not key:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Unable to find matching key for JWT validation"
+            )
+        
+        # Decode and verify JWT
+        payload = jwt.decode(
+            request.clerk_jwt,
+            key,
+            algorithms=['RS256'],
+            options={"verify_aud": False}
+        )
+        
+        user_id = payload.get('sub')
+        user_email = payload.get('email')
+        
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid JWT: missing user ID"
+            )
+        
+        # Ensure user exists in database
+        user = db.query(User).filter_by(id=user_id).first()
+        if not user:
+            # Try to fetch from Clerk and sync
+            clerk_user = await clerk_client.get_user(user_id)
+            if clerk_user:
+                user = await clerk_client.sync_user_to_db(clerk_user, db)
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+        
+        # Generate a secure session token
+        session_token = secrets.token_urlsafe(32)
+        
+        # Hash the token before storing (security best practice)
+        token_hash = hashlib.sha256(session_token.encode()).hexdigest()
+        
+        # Set expiration to 7 days from now
+        expires_at = datetime.utcnow() + timedelta(days=7)
+        
+        # Create session in database
+        db_session = UserSession(
+            user_id=user_id,
+            session_token=token_hash,
+            ip_address=http_request.client.host if http_request else None,
+            user_agent=http_request.headers.get('User-Agent') if http_request else None,
+            expires_at=expires_at
+        )
+        db.add(db_session)
+        db.commit()
+        
+        logger.info(f"Created session for user {user_id}, expires at {expires_at}")
+        
+        return CreateSessionResponse(
+            session_token=session_token,  # Return unhashed token to client
+            user_id=user_id,
+            expires_at=expires_at.isoformat()
+        )
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="JWT has expired"
+        )
+    except jwt.JWTError as e:
+        logger.error(f"JWT validation failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid JWT: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Session creation failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create session: {str(e)}"
+        )
