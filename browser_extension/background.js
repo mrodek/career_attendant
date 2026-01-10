@@ -101,17 +101,52 @@ async function clearAuthState() {
   });
 }
 
-// Get a fresh JWT token from stored session info
-// This is critical: Clerk JWTs expire quickly (60 seconds), so we need fresh ones
-async function getFreshToken() {
-  if (!authState.isAuthenticated || !authState.sessionToken) {
-    throw new Error('Not authenticated');
-  }
+// Handle expired token by re-authenticating
+async function handleExpiredToken() {
+  console.log('Token expired - initiating re-authentication');
   
-  // For now, return the stored token
-  // TODO: Implement proper token refresh using Clerk SDK or API
-  // The auth page should provide a way to refresh tokens
-  return authState.sessionToken;
+  // Open auth page in a new tab for re-authentication
+  const authUrl = `${API_BASE_URL}/auth/login?refresh=true`;
+  const authTab = await chrome.tabs.create({ url: authUrl, active: false });
+  
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      chrome.tabs.remove(authTab.id).catch(() => {});
+      reject(new Error('Authentication timeout'));
+    }, 30000); // 30 second timeout
+    
+    const listener = (tabId, changeInfo) => {
+      if (tabId !== authTab.id || changeInfo.status !== 'complete') return;
+      
+      // Check if URL contains our callback with fresh token
+      if (changeInfo.url && changeInfo.url.includes('/auth/callback?')) {
+        clearTimeout(timeout);
+        chrome.tabs.onUpdated.removeListener(listener);
+        
+        try {
+          // Extract fresh token from URL
+          const url = new URL(changeInfo.url);
+          const token = url.searchParams.get('token');
+          const userId = url.searchParams.get('userId');
+          const email = url.searchParams.get('email');
+          
+          if (token && userId) {
+            // Update auth state with fresh token
+            saveAuthState(token, userId, email).then(() => {
+              chrome.tabs.remove(tabId).catch(() => {});
+              resolve({ success: true, token });
+            });
+          } else {
+            reject(new Error('No token received'));
+          }
+        } catch (err) {
+          reject(err);
+        }
+      }
+    };
+    
+    chrome.tabs.onUpdated.addListener(listener);
+  });
 }
 
 // Handle messages from popup
@@ -253,7 +288,8 @@ async function getUserInfo() {
   
   if (!response.ok) {
     if (response.status === 401) {
-      await clearAuthState();
+      // Don't clear auth immediately - token might just be expired
+      console.log('Token expired for getUserInfo');
       throw new Error('Session expired');
     }
     throw new Error(`Failed to get user info: ${response.status}`);
@@ -263,8 +299,8 @@ async function getUserInfo() {
   return { success: true, user: data };
 }
 
-// Save job to API
-async function saveJob(jobData) {
+// Save job to API with automatic token refresh
+async function saveJob(jobData, retryCount = 0) {
   if (!authState.isAuthenticated || !authState.sessionToken) {
     throw new Error('Not authenticated');
   }
@@ -280,9 +316,19 @@ async function saveJob(jobData) {
     });
     
     if (!response.ok) {
-      if (response.status === 401) {
-        await clearAuthState();
-        throw new Error('Session expired. Please sign in again.');
+      if (response.status === 401 && retryCount === 0) {
+        // Token expired - try to get a fresh one
+        console.log('Token expired, attempting to refresh...');
+        
+        try {
+          // Get a fresh token
+          await handleExpiredToken();
+          // Retry the save with the fresh token
+          return saveJob(jobData, 1);
+        } catch (refreshError) {
+          console.error('Failed to refresh token:', refreshError);
+          throw new Error('Session expired. Please sign in again.');
+        }
       }
       
       const errorText = await response.text();
