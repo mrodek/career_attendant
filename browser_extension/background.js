@@ -115,31 +115,40 @@ async function handleExpiredToken() {
       reject(new Error('Authentication timeout'));
     }, 30000); // 30 second timeout
     
-    const listener = (tabId, changeInfo) => {
-      if (tabId !== authTab.id || changeInfo.status !== 'complete') return;
+    const listener = (tabId, changeInfo, tab) => {
+      if (tabId !== authTab.id) return;
+      
+      // Check both changeInfo.url and tab.url for the callback
+      const currentUrl = changeInfo.url || tab?.url;
       
       // Check if URL contains our callback with fresh token
-      if (changeInfo.url && changeInfo.url.includes('/auth/callback?')) {
+      if (currentUrl && currentUrl.includes('/auth/callback?')) {
+        console.log('Callback URL detected:', currentUrl);
         clearTimeout(timeout);
         chrome.tabs.onUpdated.removeListener(listener);
         
         try {
           // Extract fresh token from URL
-          const url = new URL(changeInfo.url);
+          const url = new URL(currentUrl);
           const token = url.searchParams.get('token');
           const userId = url.searchParams.get('userId');
           const email = url.searchParams.get('email');
           
+          console.log('Extracted from callback:', { userId, hasToken: !!token });
+          
           if (token && userId) {
             // Update auth state with fresh token
             saveAuthState(token, userId, email).then(() => {
+              console.log('Fresh token saved, closing auth tab');
               chrome.tabs.remove(tabId).catch(() => {});
               resolve({ success: true, token });
             });
           } else {
+            chrome.tabs.remove(tabId).catch(() => {});
             reject(new Error('No token received'));
           }
         } catch (err) {
+          chrome.tabs.remove(tabId).catch(() => {});
           reject(err);
         }
       }
