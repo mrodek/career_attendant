@@ -59,6 +59,10 @@ class AuthMiddleware:
     """Middleware to verify JWT tokens from Clerk"""
     
     async def __call__(self, request: Request, call_next):
+        # Skip auth for OPTIONS requests (CORS preflight)
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        
         # Skip auth for public endpoints
         public_paths = ['/docs', '/openapi.json', '/health', '/api/auth/webhook', '/api/auth/create-session', '/auth/login', '/auth/callback', '/extract']
         
