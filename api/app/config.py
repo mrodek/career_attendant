@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     clerk_secret_key: str = os.getenv("CLERK_SECRET_KEY", "")
     clerk_publishable_key: str = os.getenv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "")
     clerk_jwks_url: str = os.getenv("CLERK_JWKS_URL", "")
+    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     
     # Frontend and extension configuration
     frontend_url: str = os.getenv("FRONTEND_URL", "http://localhost:3000")

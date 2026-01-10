@@ -36,9 +36,11 @@ async function detectApiUrl() {
 }
 
 // Store authentication state
+// Note: We store session info, not the JWT token (which expires quickly)
 let authState = {
-  sessionToken: null,
+  sessionToken: null,  // This will store Clerk session info, not the JWT
   userId: null,
+  userEmail: null,
   isAuthenticated: false
 };
 
@@ -56,10 +58,11 @@ chrome.runtime.onInstalled.addListener(async () => {
 // Load authentication state from storage
 async function loadAuthState() {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['sessionToken', 'userId'], (result) => {
+    chrome.storage.local.get(['sessionToken', 'userId', 'userEmail'], (result) => {
       if (result.sessionToken && result.userId) {
         authState.sessionToken = result.sessionToken;
         authState.userId = result.userId;
+        authState.userEmail = result.userEmail;
         authState.isAuthenticated = true;
         console.log('Auth state loaded:', { userId: authState.userId });
       }
@@ -69,13 +72,14 @@ async function loadAuthState() {
 }
 
 // Save authentication state to storage
-async function saveAuthState(sessionToken, userId) {
+async function saveAuthState(sessionToken, userId, email) {
   authState.sessionToken = sessionToken;
   authState.userId = userId;
+  authState.userEmail = email;
   authState.isAuthenticated = true;
   
   return new Promise((resolve) => {
-    chrome.storage.local.set({ sessionToken, userId }, () => {
+    chrome.storage.local.set({ sessionToken, userId, userEmail: email }, () => {
       console.log('Auth state saved');
       resolve();
     });
@@ -86,14 +90,28 @@ async function saveAuthState(sessionToken, userId) {
 async function clearAuthState() {
   authState.sessionToken = null;
   authState.userId = null;
+  authState.userEmail = null;
   authState.isAuthenticated = false;
   
   return new Promise((resolve) => {
-    chrome.storage.local.remove(['sessionToken', 'userId'], () => {
+    chrome.storage.local.remove(['sessionToken', 'userId', 'userEmail'], () => {
       console.log('Auth state cleared');
       resolve();
     });
   });
+}
+
+// Get a fresh JWT token from stored session info
+// This is critical: Clerk JWTs expire quickly (60 seconds), so we need fresh ones
+async function getFreshToken() {
+  if (!authState.isAuthenticated || !authState.sessionToken) {
+    throw new Error('Not authenticated');
+  }
+  
+  // For now, return the stored token
+  // TODO: Implement proper token refresh using Clerk SDK or API
+  // The auth page should provide a way to refresh tokens
+  return authState.sessionToken;
 }
 
 // Handle messages from popup
@@ -118,7 +136,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   if (request.type === 'AUTH_SUCCESS') {
     // Handle successful authentication from callback page
-    saveAuthState(request.token, request.userId).then(() => {
+    saveAuthState(request.token, request.userId, request.email).then(() => {
       sendResponse({ success: true });
     }).catch((error) => {
       sendResponse({ success: false, error: error.message });

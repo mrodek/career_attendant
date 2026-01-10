@@ -634,17 +634,18 @@ async function handleSave() {
       scrapedTextDebug: rawText,
     };
     
-    // Save to API
-    const response = await fetch(`${API_BASE}/entries`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(jobData),
+    // Save via background script (handles auth)
+    const result = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({ type: 'SAVE_JOB', jobData }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else if (response && response.success) {
+          resolve(response);
+        } else {
+          reject(new Error(response?.error || 'Failed to save job'));
+        }
+      });
     });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to save: ${errorText}`);
-    }
     
     // Success
     saveBtn.classList.remove('btn-primary');

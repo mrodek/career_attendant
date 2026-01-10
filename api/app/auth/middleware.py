@@ -89,16 +89,22 @@ class AuthMiddleware:
                 )
             
             # Find the matching key
-            key = None
-            for jwk in jwks.get('keys', []):
-                if jwk.get('kid') == kid:
-                    key = jwk
-                    break
-            
+            key = next((jwk for jwk in jwks.get('keys', []) if jwk.get('kid') == kid), None)
+
+            # If key is not found, it might be because the JWKS cache is stale.
+            # Clear the cache and try fetching the keys again.
             if not key:
+                global _jwks_cache
+                _jwks_cache = None  # Invalidate the cache
+                jwks = await get_jwks_keys()
+                if jwks:
+                    key = next((jwk for jwk in jwks.get('keys', []) if jwk.get('kid') == kid), None)
+
+            if not key:
+                logger.error(f"Unable to find matching key for kid: {kid}")
                 return auth_error_response(
                     status.HTTP_401_UNAUTHORIZED,
-                    "Unable to find matching key"
+                    "Unable to find a matching public key to verify the token."
                 )
             
             # Decode and verify JWT using the public key from JWKS

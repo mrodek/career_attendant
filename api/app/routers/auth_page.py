@@ -211,8 +211,12 @@ async def auth_login_page(request: Request, extension_id: str = None):
                 if (clerk.user) {{
                     statusEl.innerHTML = '<div class="success">Already signed in! Getting token...</div>';
                     
-                    // Get JWT token
-                    const token = await clerk.session.getToken();
+                    // Get JWT token with longer expiration (60 minutes instead of default 60 seconds)
+                    // This helps prevent frequent authentication failures
+                    const token = await clerk.session.getToken({{
+                        leewayInSeconds: 30,  // Allow 30 seconds of leeway for clock skew
+                        skipCache: true  // Always get a fresh token
+                    }});
                     const userId = clerk.user.id;
                     const email = clerk.user.primaryEmailAddress?.emailAddress || '';
                     
