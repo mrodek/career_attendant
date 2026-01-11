@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import cast, String
 from typing import Optional
 from uuid import UUID
 from ..db import get_db
@@ -51,7 +52,7 @@ async def check_job_by_url(
                 if job:
                     saved_job = db.query(SavedJob).options(joinedload(SavedJob.job)).filter(
                         SavedJob.user_id == user_id,
-                        SavedJob.job_id == str(job.id)
+                        cast(SavedJob.job_id, String) == str(job.id)
                     ).first()
                 else:
                     saved_job = None
@@ -64,7 +65,7 @@ async def check_job_by_url(
                 if job:
                     saved_job = db.query(SavedJob).options(joinedload(SavedJob.job)).filter(
                         SavedJob.user_id == user_id,
-                        SavedJob.job_id == str(job.id)
+                        cast(SavedJob.job_id, String) == str(job.id)
                     ).first()
                 else:
                     saved_job = None
@@ -78,7 +79,7 @@ async def check_job_by_url(
             if job:
                 saved_job = db.query(SavedJob).options(joinedload(SavedJob.job)).filter(
                     SavedJob.user_id == user_id,
-                    SavedJob.job_id == str(job.id)
+                    cast(SavedJob.job_id, String) == str(job.id)
                 ).first()
             else:
                 saved_job = None
