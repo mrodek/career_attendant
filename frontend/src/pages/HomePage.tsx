@@ -1,9 +1,8 @@
 import { Link } from 'react-router-dom'
 import { Star, TrendingUp, Edit3, Calendar, Bookmark } from 'lucide-react'
+import { SignInButton, SignedIn, SignedOut } from '@clerk/clerk-react'
 
 export default function HomePage() {
-  // TODO: Add Clerk auth later
-  const isSignedIn = false
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -19,18 +18,21 @@ export default function HomePage() {
               <p className="text-xs text-slate-400">Your AI-Powered Job Search Assistant</p>
             </div>
           </div>
-          {isSignedIn ? (
+          <SignedIn>
             <Link 
               to="/jobs"
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm"
             >
               View Your Jobs
             </Link>
-          ) : (
-            <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">
-              Login / Sign Up
-            </button>
-          )}
+          </SignedIn>
+          <SignedOut>
+            <SignInButton mode="modal" forceRedirectUrl="/jobs">
+              <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">
+                Login / Sign Up
+              </button>
+            </SignInButton>
+          </SignedOut>
         </div>
       </header>
 
