@@ -41,28 +41,28 @@ async def check_job_by_url(
             match = re.search(r'currentJobId=(\d+)', url)
             if match:
                 job_id = match.group(1)
-                # Search for any job URL containing this job ID
-                job = db.query(SavedJob).filter(
+                # Search for any job URL containing this job ID (join with Job table)
+                saved_job = db.query(SavedJob).join(Job).filter(
                     SavedJob.user_id == user_id,
-                    SavedJob.job_url.like(f"%currentJobId={job_id}%")
+                    Job.job_url.like(f"%currentJobId={job_id}%")
                 ).first()
             else:
                 normalized_url = url.rstrip('/').split('?')[0].split('#')[0]
-                job = db.query(SavedJob).filter(
+                saved_job = db.query(SavedJob).join(Job).filter(
                     SavedJob.user_id == user_id,
-                    SavedJob.job_url.like(f"{normalized_url}%")
+                    Job.job_url.like(f"{normalized_url}%")
                 ).first()
         else:
             # For other sites, use normalized URL
             normalized_url = url.rstrip('/').split('?')[0].split('#')[0]
-            job = db.query(SavedJob).filter(
+            saved_job = db.query(SavedJob).join(Job).filter(
                 SavedJob.user_id == user_id,
-                SavedJob.job_url.like(f"{normalized_url}%")
+                Job.job_url.like(f"{normalized_url}%")
             ).first()
         
-        logger.info(f"Job found: {job is not None}")
+        logger.info(f"SavedJob found: {saved_job is not None}")
         
-        if not job:
+        if not saved_job:
             return {
                 "exists": False,
                 "job_id": None,
@@ -71,27 +71,40 @@ async def check_job_by_url(
                 "job_data": None
             }
         
-        # Check if extraction and summary exist
-        has_extraction = bool(job.extracted_data and len(job.extracted_data) > 0)
-        has_summary = bool(job.ai_summary and len(job.ai_summary) > 0)
+        # Access the related Job object
+        job = saved_job.job
+        
+        # Check if extraction and summary exist (in Job table)
+        has_extraction = bool(job.required_skills or job.salary_min or job.seniority)
+        has_summary = bool(job.summary and len(job.summary) > 0)
         
         return {
             "exists": True,
-            "job_id": str(job.id),
+            "job_id": str(saved_job.id),
             "has_extraction": has_extraction,
             "has_summary": has_summary,
             "job_data": {
-                "id": str(job.id),
-                "title": job.title,
-                "company": job.company,
+                "id": str(saved_job.id),
+                "title": job.job_title,
+                "company": job.company_name,
                 "location": job.location,
                 "job_url": job.job_url,
-                "interest_level": job.interest_level,
-                "status": job.status,
-                "extracted_data": job.extracted_data,
-                "ai_summary": job.ai_summary,
-                "created_at": job.created_at.isoformat() if job.created_at else None,
-                "updated_at": job.updated_at.isoformat() if job.updated_at else None
+                "interest_level": saved_job.interest_level,
+                "status": saved_job.application_status,
+                "extracted_data": {
+                    "jobTitle": job.job_title,
+                    "companyName": job.company_name,
+                    "location": job.location,
+                    "salaryMin": job.salary_min,
+                    "salaryMax": job.salary_max,
+                    "remoteType": job.remote_type,
+                    "roleType": job.role_type,
+                    "seniority": job.seniority,
+                    "required_skills": job.required_skills or [],
+                },
+                "ai_summary": job.summary,
+                "created_at": saved_job.created_at.isoformat() if saved_job.created_at else None,
+                "updated_at": saved_job.updated_at.isoformat() if saved_job.updated_at else None
             }
         }
     except Exception as e:

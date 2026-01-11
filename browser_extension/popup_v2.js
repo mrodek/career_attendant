@@ -310,6 +310,14 @@ async function startExtraction() {
   showMessage('Checking if job exists...', 'info');
   const apiCheck = await checkJobExistsAPI(currentUrl);
   
+  // If API check failed (500 error), fall through to extraction
+  if (apiCheck.exists === undefined) {
+    console.warn('API check failed, proceeding with extraction');
+    showMessage('Running extraction...', 'info');
+    await runFullExtraction();
+    return;
+  }
+  
   if (apiCheck.exists) {
     // Cache the result for next time
     await setCache(currentUrl, apiCheck);
