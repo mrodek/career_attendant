@@ -225,7 +225,10 @@ async def auth_login_page(request: Request, extension_id: str = None):
                             headers: {{
                                 'Content-Type': 'application/json'
                             }},
-                            body: JSON.stringify({{ clerk_jwt: clerkJWT }})
+                            body: JSON.stringify({{ 
+                                clerk_jwt: clerkJWT,
+                                email: email  // Include email from Clerk user object
+                            }})
                         }});
                         
                         if (!response.ok) {{

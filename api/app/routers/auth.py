@@ -23,6 +23,7 @@ class SessionValidationResponse(BaseModel):
 
 class CreateSessionRequest(BaseModel):
     clerk_jwt: str
+    email: Optional[str] = None  # Optional email from auth page
 
 class CreateSessionResponse(BaseModel):
     session_token: str
@@ -207,8 +208,13 @@ async def create_session(
         logger.info(f"JWT payload keys: {list(payload.keys())}")
         
         user_id = payload.get('sub')
-        # Try different possible email fields
-        user_email = payload.get('email') or payload.get('email_address') or payload.get('primary_email_address')
+        # Try different possible email fields from JWT, or use the one provided in request
+        user_email = (
+            payload.get('email') or 
+            payload.get('email_address') or 
+            payload.get('primary_email_address') or
+            request.email  # Use email from request body if provided
+        )
         
         if not user_id:
             raise HTTPException(
@@ -217,7 +223,7 @@ async def create_session(
             )
         
         if not user_email:
-            logger.error(f"No email found in JWT payload. Available fields: {list(payload.keys())}")
+            logger.error(f"No email found in JWT payload or request. Available JWT fields: {list(payload.keys())}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid JWT: missing email address"
