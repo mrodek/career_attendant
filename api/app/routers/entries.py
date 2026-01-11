@@ -35,36 +35,53 @@ async def check_job_by_url(
         
         # For LinkedIn, extract the job ID from currentJobId parameter
         # Otherwise, normalize URL (remove trailing slash, query params, fragments)
+        from sqlalchemy.orm import joinedload
+        
         if 'linkedin.com' in url and 'currentJobId=' in url:
             # Extract job ID from LinkedIn URL
             import re
             match = re.search(r'currentJobId=(\d+)', url)
             if match:
                 job_id = match.group(1)
-                # Search for any job URL containing this job ID (join with Job table)
-                saved_job = db.query(SavedJob).join(
-                    Job, SavedJob.job_id == Job.id
-                ).filter(
-                    SavedJob.user_id == user_id,
+                # First find the Job, then find SavedJob for this user
+                job = db.query(Job).filter(
                     Job.job_url.like(f"%currentJobId={job_id}%")
                 ).first()
+                
+                if job:
+                    saved_job = db.query(SavedJob).options(joinedload(SavedJob.job)).filter(
+                        SavedJob.user_id == user_id,
+                        SavedJob.job_id == job.id
+                    ).first()
+                else:
+                    saved_job = None
             else:
                 normalized_url = url.rstrip('/').split('?')[0].split('#')[0]
-                saved_job = db.query(SavedJob).join(
-                    Job, SavedJob.job_id == Job.id
-                ).filter(
-                    SavedJob.user_id == user_id,
+                job = db.query(Job).filter(
                     Job.job_url.like(f"{normalized_url}%")
                 ).first()
+                
+                if job:
+                    saved_job = db.query(SavedJob).options(joinedload(SavedJob.job)).filter(
+                        SavedJob.user_id == user_id,
+                        SavedJob.job_id == job.id
+                    ).first()
+                else:
+                    saved_job = None
         else:
             # For other sites, use normalized URL
             normalized_url = url.rstrip('/').split('?')[0].split('#')[0]
-            saved_job = db.query(SavedJob).join(
-                Job, SavedJob.job_id == Job.id
-            ).filter(
-                SavedJob.user_id == user_id,
+            job = db.query(Job).filter(
                 Job.job_url.like(f"{normalized_url}%")
             ).first()
+            
+            if job:
+                saved_job = db.query(SavedJob).options(joinedload(SavedJob.job)).filter(
+                    SavedJob.user_id == user_id,
+                    SavedJob.job_id == job.id
+                ).first()
+            else:
+                saved_job = None
         
         logger.info(f"SavedJob found: {saved_job is not None}")
         
