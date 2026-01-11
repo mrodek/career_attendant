@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Optional
@@ -27,51 +27,81 @@ async def check_job_by_url(
     This is used by the browser extension to avoid re-extracting
     jobs that have already been saved.
     """
-    if not url:
-        raise HTTPException(status_code=400, detail="URL parameter is required")
-    
-    # Normalize URL (remove trailing slash, query params, fragments)
-    normalized_url = url.rstrip('/').split('?')[0].split('#')[0]
-    
-    # Query for job with matching URL for this user
-    # Use LIKE to handle slight URL variations
-    job = db.query(SavedJob).filter(
-        SavedJob.user_id == user_id,
-        SavedJob.job_url.like(f"{normalized_url}%")
-    ).first()
-    
-    if not job:
+    try:
+        if not url:
+            raise HTTPException(status_code=400, detail="URL parameter is required")
+        
+        logger.info(f"Checking if job exists for user {user_id}: {url}")
+        
+        # For LinkedIn, extract the job ID from currentJobId parameter
+        # Otherwise, normalize URL (remove trailing slash, query params, fragments)
+        if 'linkedin.com' in url and 'currentJobId=' in url:
+            # Extract job ID from LinkedIn URL
+            import re
+            match = re.search(r'currentJobId=(\d+)', url)
+            if match:
+                job_id = match.group(1)
+                # Search for any job URL containing this job ID
+                job = db.query(SavedJob).filter(
+                    SavedJob.user_id == user_id,
+                    SavedJob.job_url.like(f"%currentJobId={job_id}%")
+                ).first()
+            else:
+                normalized_url = url.rstrip('/').split('?')[0].split('#')[0]
+                job = db.query(SavedJob).filter(
+                    SavedJob.user_id == user_id,
+                    SavedJob.job_url.like(f"{normalized_url}%")
+                ).first()
+        else:
+            # For other sites, use normalized URL
+            normalized_url = url.rstrip('/').split('?')[0].split('#')[0]
+            job = db.query(SavedJob).filter(
+                SavedJob.user_id == user_id,
+                SavedJob.job_url.like(f"{normalized_url}%")
+            ).first()
+        
+        logger.info(f"Job found: {job is not None}")
+        
+        if not job:
+            return {
+                "exists": False,
+                "job_id": None,
+                "has_extraction": False,
+                "has_summary": False,
+                "job_data": None
+            }
+        
+        # Check if extraction and summary exist
+        has_extraction = bool(job.extracted_data and len(job.extracted_data) > 0)
+        has_summary = bool(job.ai_summary and len(job.ai_summary) > 0)
+        
         return {
-            "exists": False,
-            "job_id": None,
-            "has_extraction": False,
-            "has_summary": False,
-            "job_data": None
+            "exists": True,
+            "job_id": str(job.id),
+            "has_extraction": has_extraction,
+            "has_summary": has_summary,
+            "job_data": {
+                "id": str(job.id),
+                "title": job.title,
+                "company": job.company,
+                "location": job.location,
+                "job_url": job.job_url,
+                "interest_level": job.interest_level,
+                "status": job.status,
+                "extracted_data": job.extracted_data,
+                "ai_summary": job.ai_summary,
+                "created_at": job.created_at.isoformat() if job.created_at else None,
+                "updated_at": job.updated_at.isoformat() if job.updated_at else None
+            }
         }
-    
-    # Check if extraction and summary exist
-    has_extraction = bool(job.extracted_data and len(job.extracted_data) > 0)
-    has_summary = bool(job.ai_summary and len(job.ai_summary) > 0)
-    
-    return {
-        "exists": True,
-        "job_id": str(job.id),
-        "has_extraction": has_extraction,
-        "has_summary": has_summary,
-        "job_data": {
-            "id": str(job.id),
-            "title": job.title,
-            "company": job.company,
-            "location": job.location,
-            "job_url": job.job_url,
-            "interest_level": job.interest_level,
-            "status": job.status,
-            "extracted_data": job.extracted_data,
-            "ai_summary": job.ai_summary,
-            "created_at": job.created_at.isoformat() if job.created_at else None,
-            "updated_at": job.updated_at.isoformat() if job.updated_at else None
-        }
-    }
+    except Exception as e:
+        logger.error(f"Error checking job by URL: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to check job: {str(e)}"
+        )
 
 
 async def verify_api_key(x_api_key: Optional[str] = Header(None)):
