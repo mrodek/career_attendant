@@ -343,8 +343,15 @@ async function saveJob(jobData) {
   }
   
   try {
-    const response = await fetch(`${API_BASE_URL}/entries`, {
-      method: 'POST',
+    // Use PUT for updates, POST for new jobs
+    const isUpdate = !!jobData.existingJobId;
+    const url = isUpdate 
+      ? `${API_BASE_URL}/entries/${jobData.existingJobId}`
+      : `${API_BASE_URL}/entries`;
+    const method = isUpdate ? 'PUT' : 'POST';
+    
+    const response = await fetch(url, {
+      method: method,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${authState.sessionToken}`

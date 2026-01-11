@@ -29,6 +29,7 @@ let extractionState = {
 let interestLevel = 'medium';
 let currentUrl = '';
 let rawText = '';
+let existingJobId = null; // Track if this is an existing job for updates
 
 // ==========================================================================
 // Initialization
@@ -458,6 +459,9 @@ function handleExtractionEvent(data) {
 function displayExistingJob(jobData) {
   extractionState.status = 'complete';
   
+  // Store job ID for updates
+  existingJobId = jobData.job_id;
+  
   // Populate fields from existing data
   if (jobData.job_data && jobData.job_data.extracted_data) {
     extractionState.fields = jobData.job_data.extracted_data;
@@ -789,6 +793,8 @@ async function handleSave() {
       summary: extractionState.summary,
       // Include raw text for any additional processing
       scrapedTextDebug: rawText,
+      // Include job ID if this is an update
+      existingJobId: existingJobId
     };
     
     // Save via background script (handles auth)
@@ -799,7 +805,12 @@ async function handleSave() {
         } else if (response && response.success) {
           resolve(response);
         } else {
-          reject(new Error(response?.error || 'Failed to save job'));
+          // Handle 409 gracefully - job already exists
+          if (response?.error && response.error.includes('409')) {
+            resolve({ success: true, updated: false, message: 'Job already saved' });
+          } else {
+            reject(new Error(response?.error || 'Failed to save job'));
+          }
         }
       });
     });
