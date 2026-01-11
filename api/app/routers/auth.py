@@ -217,14 +217,24 @@ async def create_session(
         user = db.query(User).filter_by(id=user_id).first()
         if not user:
             # Try to fetch from Clerk and sync
+            logger.info(f"User {user_id} not in database, attempting to fetch from Clerk")
             clerk_user = await clerk_client.get_user(user_id)
             if clerk_user:
+                logger.info(f"Successfully fetched user {user_id} from Clerk, syncing to database")
                 user = await clerk_client.sync_user_to_db(clerk_user, db)
             else:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="User not found"
+                # Clerk API failed, create user from JWT data
+                logger.warning(f"Could not fetch user {user_id} from Clerk, creating from JWT data")
+                user = User(
+                    id=user_id,
+                    email=user_email,
+                    username=user_email.split('@')[0] if user_email else None,
+                    full_name=payload.get('name', '')
                 )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+                logger.info(f"Created user {user_id} from JWT data")
         
         # Generate a secure session token
         session_token = secrets.token_urlsafe(32)
