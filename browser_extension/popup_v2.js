@@ -481,7 +481,13 @@ function displayExistingJob(jobData) {
   // Set interest level if available
   if (jobData.job_data && jobData.job_data.interest_level) {
     interestLevel = jobData.job_data.interest_level;
-    updateInterestLevelUI(interestLevel);
+    // Update interest level buttons
+    document.querySelectorAll('.interest-btn').forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.dataset.level === interestLevel) {
+        btn.classList.add('active');
+      }
+    });
   }
   
   // Enable save button (for updates)
