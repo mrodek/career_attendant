@@ -296,8 +296,8 @@ async def list_entries(
             "aiWorkflowStatus": saved.ai_workflow_status,
             "aiWorkflowError": saved.ai_workflow_error,
             # Timestamps
-            "created_at": saved.created_at,
-            "updated_at": saved.updated_at,
+            "createdAt": saved.created_at,
+            "updatedAt": saved.updated_at,
         }
         for saved, job in items
     ]
