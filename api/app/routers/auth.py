@@ -204,13 +204,23 @@ async def create_session(
             options={"verify_aud": False}
         )
         
+        logger.info(f"JWT payload keys: {list(payload.keys())}")
+        
         user_id = payload.get('sub')
-        user_email = payload.get('email')
+        # Try different possible email fields
+        user_email = payload.get('email') or payload.get('email_address') or payload.get('primary_email_address')
         
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid JWT: missing user ID"
+            )
+        
+        if not user_email:
+            logger.error(f"No email found in JWT payload. Available fields: {list(payload.keys())}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid JWT: missing email address"
             )
         
         # Ensure user exists in database
