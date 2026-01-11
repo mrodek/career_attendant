@@ -51,7 +51,7 @@ async def check_job_by_url(
                 if job:
                     saved_job = db.query(SavedJob).options(joinedload(SavedJob.job)).filter(
                         SavedJob.user_id == user_id,
-                        SavedJob.job_id == job.id
+                        SavedJob.job_id == str(job.id)
                     ).first()
                 else:
                     saved_job = None
@@ -64,7 +64,7 @@ async def check_job_by_url(
                 if job:
                     saved_job = db.query(SavedJob).options(joinedload(SavedJob.job)).filter(
                         SavedJob.user_id == user_id,
-                        SavedJob.job_id == job.id
+                        SavedJob.job_id == str(job.id)
                     ).first()
                 else:
                     saved_job = None
@@ -78,7 +78,7 @@ async def check_job_by_url(
             if job:
                 saved_job = db.query(SavedJob).options(joinedload(SavedJob.job)).filter(
                     SavedJob.user_id == user_id,
-                    SavedJob.job_id == job.id
+                    SavedJob.job_id == str(job.id)
                 ).first()
             else:
                 saved_job = None
