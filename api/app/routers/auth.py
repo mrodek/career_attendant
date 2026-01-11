@@ -145,8 +145,8 @@ async def sync_user_from_clerk(
 @router.post("/create-session", response_model=CreateSessionResponse)
 async def create_session(
     request: CreateSessionRequest,
-    db: Session = Depends(get_db),
-    http_request: Request = None
+    http_request: Request,
+    db: Session = Depends(get_db)
 ):
     """
     Exchange a Clerk JWT for a long-lived session token.
@@ -266,7 +266,9 @@ async def create_session(
             detail=f"Invalid JWT: {str(e)}"
         )
     except Exception as e:
+        import traceback
         logger.error(f"Session creation failed: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create session: {str(e)}"
