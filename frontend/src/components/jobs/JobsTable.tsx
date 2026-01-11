@@ -118,6 +118,21 @@ export default function JobsTable({ jobs, onSelectJob, onDeleteJob }: JobsTableP
     return '—'
   }
 
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '—'
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    
+    if (diffDays === 0) return 'Today'
+    if (diffDays === 1) return 'Yesterday'
+    if (diffDays < 7) return `${diffDays}d ago`
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
+    
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
     if (confirm('Are you sure you want to delete this job?')) {
@@ -173,6 +188,14 @@ export default function JobsTable({ jobs, onSelectJob, onDeleteJob }: JobsTableP
                 Fit Score <SortIcon field="jobFitScore" />
               </div>
             </th>
+            <th
+              className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-slate-100"
+              onClick={() => handleSort('createdAt')}
+            >
+              <div className="flex items-center gap-2">
+                Date Saved <SortIcon field="createdAt" />
+              </div>
+            </th>
             <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Actions</th>
           </tr>
         </thead>
@@ -219,6 +242,9 @@ export default function JobsTable({ jobs, onSelectJob, onDeleteJob }: JobsTableP
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${getFitColor(savedJob.jobFitScore)}`}>
                   {formatLabel(savedJob.jobFitScore)}
                 </span>
+              </td>
+              <td className="px-6 py-4 text-slate-600 text-sm">
+                {formatDate(savedJob.createdAt)}
               </td>
               <td className="px-6 py-4">
                 <div className="flex items-center gap-2">
