@@ -82,6 +82,60 @@ async function loadAuthState() {
   });
 }
 
+// ==========================================================================
+// Cache Helper Functions
+// ==========================================================================
+
+async function checkCache(url) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(
+      { type: 'CHECK_JOB_CACHED', url },
+      (response) => resolve(response)
+    );
+  });
+}
+
+async function setCache(url, data) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(
+      { type: 'SET_JOB_CACHE', url, data },
+      (response) => resolve(response)
+    );
+  });
+}
+
+async function invalidateCache(url) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(
+      { type: 'INVALIDATE_JOB_CACHE', url },
+      (response) => resolve(response)
+    );
+  });
+}
+
+// Check if job exists via API
+async function checkJobExistsAPI(url) {
+  try {
+    const response = await fetch(
+      `${API_BASE}/entries/check-by-url?url=${encodeURIComponent(url)}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${authState.sessionToken}`
+        }
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to check job existence:', error);
+    return { exists: false };
+  }
+}
+
 // Update auth UI
 function updateAuthUI() {
   const authSection = document.getElementById('authSection');
@@ -237,6 +291,49 @@ async function startExtraction() {
     return;
   }
   
+  // STEP 1: Check authentication FIRST
+  if (!authState.isAuthenticated) {
+    showMessage('Please sign in to save jobs', 'error');
+    return;
+  }
+  
+  // STEP 2: Check in-memory cache (instant)
+  const cached = await checkCache(currentUrl);
+  if (cached && cached.exists) {
+    console.log('✓ Using cached job data');
+    displayExistingJob(cached);
+    showMessage('✓ Job already saved (from cache)', 'success');
+    return;
+  }
+  
+  // STEP 3: Check API (if cache miss)
+  showMessage('Checking if job exists...', 'info');
+  const apiCheck = await checkJobExistsAPI(currentUrl);
+  
+  if (apiCheck.exists) {
+    // Cache the result for next time
+    await setCache(currentUrl, apiCheck);
+    
+    if (apiCheck.has_extraction && apiCheck.has_summary) {
+      // Complete - show existing data
+      displayExistingJob(apiCheck);
+      showMessage('✓ Job already saved! Showing existing data.', 'success');
+      return;
+    } else if (apiCheck.has_extraction) {
+      // Has extraction but no summary - only run AI summary
+      showMessage('Job exists but missing AI summary. Running analysis...', 'info');
+      // TODO: Implement summary-only endpoint if needed
+      // For now, fall through to full extraction
+    }
+    // Has job but no extraction - fall through to full extraction
+  }
+  
+  // STEP 4: Job doesn't exist or incomplete - run full extraction
+  await runFullExtraction();
+}
+
+// Run full extraction (original startExtraction logic)
+async function runFullExtraction() {
   // Reset UI
   resetExtractionUI();
   extractionState = { status: 'extracting', fields: {}, confidence: {}, summary: null, errors: [] };
@@ -347,6 +444,52 @@ function handleExtractionEvent(data) {
     document.getElementById('retryBtn').style.display = 'flex';
     document.getElementById('saveBtn').disabled = false; // Allow save with manual data
   }
+}
+
+// Display existing job data from cache/API
+function displayExistingJob(jobData) {
+  extractionState.status = 'complete';
+  
+  // Populate fields from existing data
+  if (jobData.job_data && jobData.job_data.extracted_data) {
+    extractionState.fields = jobData.job_data.extracted_data;
+    
+    // Update UI fields
+    Object.entries(jobData.job_data.extracted_data).forEach(([field, value]) => {
+      const input = document.getElementById(field);
+      if (input && value) {
+        input.value = value;
+        input.classList.remove('loading');
+      }
+    });
+  }
+  
+  // Display summary if available
+  if (jobData.job_data && jobData.job_data.ai_summary) {
+    extractionState.summary = jobData.job_data.ai_summary;
+    updateSummary(jobData.job_data.ai_summary);
+  }
+  
+  // Set interest level if available
+  if (jobData.job_data && jobData.job_data.interest_level) {
+    interestLevel = jobData.job_data.interest_level;
+    updateInterestLevelUI(interestLevel);
+  }
+  
+  // Enable save button (for updates)
+  document.getElementById('saveBtn').disabled = false;
+  document.getElementById('saveBtn').textContent = '💾 Update Job';
+  
+  // Show "Force Re-extract" button
+  const retryBtn = document.getElementById('retryBtn');
+  retryBtn.textContent = '🔄 Force Re-extract';
+  retryBtn.style.display = 'flex';
+  retryBtn.onclick = async () => {
+    await invalidateCache(currentUrl);
+    await runFullExtraction();
+  };
+  
+  clearAllLoadingStates();
 }
 
 // Extract client-side fields (fallback/validation)
@@ -647,7 +790,9 @@ async function handleSave() {
       });
     });
     
-    // Success
+    // Success - invalidate cache so next check gets fresh data
+    await invalidateCache(currentUrl);
+    
     saveBtn.classList.remove('btn-primary');
     saveBtn.classList.add('btn-success');
     saveBtn.innerHTML = `

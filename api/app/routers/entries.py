@@ -14,6 +14,66 @@ from ..logger import logger
 router = APIRouter(prefix="/entries", tags=["entries"])
 
 
+@router.get("/check-by-url")
+async def check_job_by_url(
+    url: str = Query(..., description="Job URL to check"),
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    """
+    Check if a job exists for the current user by URL.
+    Returns job data if exists, avoiding redundant extraction.
+    
+    This is used by the browser extension to avoid re-extracting
+    jobs that have already been saved.
+    """
+    if not url:
+        raise HTTPException(status_code=400, detail="URL parameter is required")
+    
+    # Normalize URL (remove trailing slash, query params, fragments)
+    normalized_url = url.rstrip('/').split('?')[0].split('#')[0]
+    
+    # Query for job with matching URL for this user
+    # Use LIKE to handle slight URL variations
+    job = db.query(SavedJob).filter(
+        SavedJob.user_id == user_id,
+        SavedJob.job_url.like(f"{normalized_url}%")
+    ).first()
+    
+    if not job:
+        return {
+            "exists": False,
+            "job_id": None,
+            "has_extraction": False,
+            "has_summary": False,
+            "job_data": None
+        }
+    
+    # Check if extraction and summary exist
+    has_extraction = bool(job.extracted_data and len(job.extracted_data) > 0)
+    has_summary = bool(job.ai_summary and len(job.ai_summary) > 0)
+    
+    return {
+        "exists": True,
+        "job_id": str(job.id),
+        "has_extraction": has_extraction,
+        "has_summary": has_summary,
+        "job_data": {
+            "id": str(job.id),
+            "title": job.title,
+            "company": job.company,
+            "location": job.location,
+            "job_url": job.job_url,
+            "interest_level": job.interest_level,
+            "status": job.status,
+            "extracted_data": job.extracted_data,
+            "ai_summary": job.ai_summary,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+            "updated_at": job.updated_at.isoformat() if job.updated_at else None
+        }
+    }
+
+
 async def verify_api_key(x_api_key: Optional[str] = Header(None)):
     """Legacy API key verification - kept for backward compatibility"""
     settings = Settings()

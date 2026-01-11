@@ -44,6 +44,65 @@ let authState = {
   isAuthenticated: false
 };
 
+// Job cache to avoid redundant API calls and extraction
+// Maps normalized URL -> { exists, job_id, job_data, has_extraction, has_summary, timestamp }
+const jobCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Normalize URL for consistent cache keys
+function normalizeUrl(url) {
+  if (!url) return '';
+  // Remove trailing slash, query params, fragments
+  return url.split('?')[0].split('#')[0].replace(/\/$/, '').toLowerCase();
+}
+
+// Get cached job check result
+function getCachedJobCheck(url) {
+  const normalized = normalizeUrl(url);
+  const cached = jobCache.get(normalized);
+  
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log('✓ Cache hit for:', url);
+    return cached;
+  }
+  
+  if (cached) {
+    console.log('✗ Cache expired for:', url);
+    jobCache.delete(normalized);
+  } else {
+    console.log('✗ Cache miss for:', url);
+  }
+  
+  return null;
+}
+
+// Set cached job check result
+function setCachedJobCheck(url, data) {
+  const normalized = normalizeUrl(url);
+  jobCache.set(normalized, {
+    ...data,
+    timestamp: Date.now()
+  });
+  console.log('✓ Cached job data for:', url);
+}
+
+// Invalidate cache for a specific URL
+function invalidateJobCache(url) {
+  const normalized = normalizeUrl(url);
+  const deleted = jobCache.delete(normalized);
+  if (deleted) {
+    console.log('✓ Cache invalidated for:', url);
+  }
+  return deleted;
+}
+
+// Clear all cache (useful for debugging or logout)
+function clearJobCache() {
+  const size = jobCache.size;
+  jobCache.clear();
+  console.log(`✓ Cleared ${size} cached jobs`);
+}
+
 // Initialize authentication state on startup
 chrome.runtime.onStartup.addListener(async () => {
   await detectApiUrl();
@@ -133,8 +192,34 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   if (request.type === 'LOGOUT') {
     clearAuthState().then(() => {
+      clearJobCache(); // Clear cache on logout
       sendResponse({ success: true });
     });
+    return true;
+  }
+  
+  // Cache operations
+  if (request.type === 'CHECK_JOB_CACHED') {
+    const cached = getCachedJobCheck(request.url);
+    sendResponse(cached);
+    return true;
+  }
+  
+  if (request.type === 'SET_JOB_CACHE') {
+    setCachedJobCheck(request.url, request.data);
+    sendResponse({ success: true });
+    return true;
+  }
+  
+  if (request.type === 'INVALIDATE_JOB_CACHE') {
+    const deleted = invalidateJobCache(request.url);
+    sendResponse({ success: true, deleted });
+    return true;
+  }
+  
+  if (request.type === 'CLEAR_JOB_CACHE') {
+    clearJobCache();
+    sendResponse({ success: true });
     return true;
   }
   
