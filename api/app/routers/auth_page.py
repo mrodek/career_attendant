@@ -229,7 +229,9 @@ async def auth_login_page(request: Request, extension_id: str = None):
                         }});
                         
                         if (!response.ok) {{
-                            throw new Error('Failed to create session');
+                            const errorText = await response.text();
+                            console.error('Session creation failed:', response.status, errorText);
+                            throw new Error(`Failed to create session: ${{response.status}} - ${{errorText}}`);
                         }}
                         
                         const {{ session_token, expires_at }} = await response.json();
