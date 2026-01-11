@@ -42,20 +42,26 @@ async def check_job_by_url(
             if match:
                 job_id = match.group(1)
                 # Search for any job URL containing this job ID (join with Job table)
-                saved_job = db.query(SavedJob).join(Job).filter(
+                saved_job = db.query(SavedJob).join(
+                    Job, SavedJob.job_id == Job.id
+                ).filter(
                     SavedJob.user_id == user_id,
                     Job.job_url.like(f"%currentJobId={job_id}%")
                 ).first()
             else:
                 normalized_url = url.rstrip('/').split('?')[0].split('#')[0]
-                saved_job = db.query(SavedJob).join(Job).filter(
+                saved_job = db.query(SavedJob).join(
+                    Job, SavedJob.job_id == Job.id
+                ).filter(
                     SavedJob.user_id == user_id,
                     Job.job_url.like(f"{normalized_url}%")
                 ).first()
         else:
             # For other sites, use normalized URL
             normalized_url = url.rstrip('/').split('?')[0].split('#')[0]
-            saved_job = db.query(SavedJob).join(Job).filter(
+            saved_job = db.query(SavedJob).join(
+                Job, SavedJob.job_id == Job.id
+            ).filter(
                 SavedJob.user_id == user_id,
                 Job.job_url.like(f"{normalized_url}%")
             ).first()
