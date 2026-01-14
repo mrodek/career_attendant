@@ -19,12 +19,16 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Convert jobs.id from VARCHAR to UUID
-    # The USING clause tells PostgreSQL how to convert the existing VARCHAR values to UUID
-    op.execute('ALTER TABLE jobs ALTER COLUMN id TYPE UUID USING id::uuid')
+    # Step 1: Drop the foreign key constraint
+    op.execute('ALTER TABLE saved_jobs DROP CONSTRAINT IF EXISTS fk_saved_jobs_job_id')
+    op.execute('ALTER TABLE saved_jobs DROP CONSTRAINT IF EXISTS saved_jobs_job_id_fkey')
     
-    # Convert saved_jobs.job_id from VARCHAR to UUID (foreign key)
+    # Step 2: Convert both columns to UUID
+    op.execute('ALTER TABLE jobs ALTER COLUMN id TYPE UUID USING id::uuid')
     op.execute('ALTER TABLE saved_jobs ALTER COLUMN job_id TYPE UUID USING job_id::uuid')
+    
+    # Step 3: Recreate the foreign key constraint
+    op.execute('ALTER TABLE saved_jobs ADD CONSTRAINT saved_jobs_job_id_fkey FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE')
 
 
 def downgrade() -> None:
