@@ -25,6 +25,8 @@ else:
         if extension_origin not in allowed_origins:
             allowed_origins.append(extension_origin)
 
+logger.info(f"CORS configuration: cors_origins='{settings.cors_origins}', allowed_origins={allowed_origins}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
