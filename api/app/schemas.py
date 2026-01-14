@@ -142,6 +142,7 @@ class SavedJobIn(BaseModel):
     
     # LLM-generated content (from streaming extraction)
     summary: Optional[str] = None  # AI-generated job summary
+    llmExtractedComprehensive: Optional[dict] = None  # Full comprehensive extraction JSON
 
     # User-specific tracking fields
     interestLevel: Optional[Literal['high', 'medium', 'low']] = None

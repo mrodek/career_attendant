@@ -19,8 +19,8 @@ from app import models  # noqa: F401 - Import models to register them with Base
 config = context.config
 
 # Load database URL from environment/settings
-settings = Settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# settings = Settings()
+# config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

@@ -123,6 +123,11 @@ def get_or_create_job(db: Session, payload: EntryIn) -> Tuple[Job, bool]:
             job.summary_generated_at = datetime.now(timezone.utc)
             updated = True
         
+        # Comprehensive LLM extraction (always update if provided)
+        if getattr(payload, 'llmExtractedComprehensive', None):
+            job.llm_extracted_comprehensive = payload.llmExtractedComprehensive
+            updated = True
+        
         if updated:
             db.flush()
         
@@ -163,6 +168,7 @@ def get_or_create_job(db: Session, payload: EntryIn) -> Tuple[Job, bool]:
         # LLM-generated content
         summary=getattr(payload, 'summary', None),
         summary_generated_at=datetime.now(timezone.utc) if getattr(payload, 'summary', None) else None,
+        llm_extracted_comprehensive=getattr(payload, 'llmExtractedComprehensive', None),
         # Timestamps
         updated_at=datetime.now(timezone.utc),
     )

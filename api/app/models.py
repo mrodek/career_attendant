@@ -45,7 +45,7 @@ class User(Base):
 class Job(Base):
     __tablename__ = "jobs"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # === Core Job Fields (Factual, non-copyrightable) ===
     job_title = Column(String(500), nullable=True)
@@ -96,6 +96,7 @@ class Job(Base):
     summary = Column(Text, nullable=True)  # 6-10 bullet job summary
     summary_generated_at = Column(TIMESTAMP(timezone=True), nullable=True)
     embedding_id = Column(String(100), nullable=True)  # ChromaDB document ID
+    llm_extracted_comprehensive = Column(JSON, nullable=True) # Raw JSON output from the comprehensive extraction prompt
 
     # === Analytics ===
     saved_count = Column(Integer, nullable=False, server_default="0")

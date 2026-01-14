@@ -115,6 +115,9 @@ async def run_extraction_stream(
                     # Include extracted fields with confidence
                     jobdoc = state.get("jobdoc", {})
                     evidence = state.get("extraction_evidence", [])
+                    comprehensive = state.get("comprehensive_analysis", {})
+                    
+                    logger.info(f"Extract node complete. comprehensive_analysis keys: {list(comprehensive.keys()) if comprehensive else 'EMPTY'}")
                     
                     # Build confidence map
                     confidence_map = {}
@@ -128,6 +131,7 @@ async def run_extraction_stream(
                     
                     event_data["fields"] = jobdoc
                     event_data["confidence"] = confidence_map
+                    event_data["comprehensive_analysis"] = comprehensive
                     event_data["message"] = f"Extracted {len(jobdoc)} fields"
                 
                 elif node_name == "summarize":
@@ -192,6 +196,7 @@ async def extract_stream(request: ExtractRequest):
     - confidence: Confidence scores per field
     - summary: Job summary (after summarize node)
     """
+    logger.info(f"Extract stream called for URL: {request.job_url}")
     if not request.raw_text or len(request.raw_text) < 100:
         raise HTTPException(
             status_code=400,

@@ -40,6 +40,7 @@ def persist_job_artifacts(
     job_id = state.get("job_id")
     jobdoc = state.get("jobdoc", {})
     job_summary = state.get("job_summary", "")
+    comprehensive_analysis = state.get("comprehensive_analysis", {})
     
     persisted = False
     embedding_id = None
@@ -109,6 +110,10 @@ def persist_job_artifacts(
                 # Industry
                 if jobdoc.get("industry"):
                     job.industry = jobdoc["industry"]
+                
+                # Save comprehensive LLM analysis (full JSON for job fit scoring)
+                if comprehensive_analysis:
+                    job.llm_extracted_comprehensive = comprehensive_analysis
                 
                 # Save summary
                 if job_summary:

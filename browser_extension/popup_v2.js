@@ -3,7 +3,7 @@
 // ==========================================================================
 
 const CONFIG = {
-  USE_PRODUCTION: true,
+  USE_PRODUCTION: false,
   PRODUCTION_URL: 'https://careerattendant-production.up.railway.app',
   LOCAL_URL: 'http://localhost:8080',
 };
@@ -24,6 +24,7 @@ let extractionState = {
   fields: {},
   confidence: {},
   summary: null,
+  comprehensiveAnalysis: null, // Full LLM extraction JSON for job fit scoring
   errors: [],
 };
 let interestLevel = 'medium';
@@ -292,8 +293,8 @@ async function startExtraction() {
     return;
   }
   
-  // STEP 1: Check authentication FIRST
-  if (!authState.isAuthenticated) {
+  // STEP 1: Check authentication FIRST (skip in DEV_MODE)
+  if (!DEV_MODE && !authState.isAuthenticated) {
     showMessage('Please sign in to save jobs', 'error');
     return;
   }
@@ -345,7 +346,7 @@ async function startExtraction() {
 async function runFullExtraction() {
   // Reset UI
   resetExtractionUI();
-  extractionState = { status: 'extracting', fields: {}, confidence: {}, summary: null, errors: [] };
+  extractionState = { status: 'extracting', fields: {}, confidence: {}, summary: null, comprehensiveAnalysis: null, errors: [] };
   document.getElementById('retryBtn').style.display = 'none';
   document.getElementById('saveBtn').disabled = true;
   
@@ -429,6 +430,12 @@ function handleExtractionEvent(data) {
   if (data.confidence) {
     extractionState.confidence = { ...extractionState.confidence, ...data.confidence };
     updateConfidenceIndicators(data.confidence);
+  }
+  
+  // Handle comprehensive analysis (full extraction JSON)
+  if (data.comprehensive_analysis) {
+    extractionState.comprehensiveAnalysis = data.comprehensive_analysis;
+    console.log('Received comprehensive analysis with keys:', Object.keys(data.comprehensive_analysis));
   }
   
   // Handle summary
@@ -791,6 +798,8 @@ async function handleSave() {
       notes: document.getElementById('notes').value || null,
       // Include summary for backend to save
       summary: extractionState.summary,
+      // Include comprehensive LLM extraction for job fit scoring
+      llmExtractedComprehensive: extractionState.comprehensiveAnalysis,
       // Include raw text for any additional processing
       scrapedTextDebug: rawText,
       // Include job ID if this is an update

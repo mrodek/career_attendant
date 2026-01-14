@@ -84,8 +84,9 @@ class JobIntakeState(TypedDict, total=False):
     doc_stats: DocStats
     
     # === Node 3: extract_structured_fields ===
-    llm_extracted: JobDocPartial  # LLM-extracted fields
+    llm_extracted: JobDocPartial  # LLM-extracted fields (legacy, for backward compatibility)
     extraction_evidence: List[dict]  # Evidence for each extraction
+    comprehensive_analysis: dict  # Full JSON output from comprehensive extraction prompt
     
     # === Node 4: normalize_and_validate (future) ===
     jobdoc: JobDocPartial  # Final merged + validated JobDoc

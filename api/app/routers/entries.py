@@ -158,6 +158,7 @@ async def create_entry_route(
 ):
     """Create a new job entry for the authenticated user"""
     logger.info(f"Received entry creation request for URL: {payload.jobUrl} from user: {user.id}")
+    logger.info(f"Payload has llmExtractedComprehensive: {payload.llmExtractedComprehensive is not None}")
     
     # Check if user already saved this job
     existing = get_saved_job_by_url(db, user.id, payload.jobUrl)
