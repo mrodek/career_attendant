@@ -18,7 +18,7 @@ let authState = {
   sessionToken: null,
 };
 
-let DEV_MODE = false;
+let DEV_MODE = true;
 let extractionState = {
   status: 'idle', // idle, extracting, complete, error
   fields: {},

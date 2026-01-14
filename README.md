@@ -198,7 +198,7 @@ uvicorn app.main:app --reload --port 8080
 
 The extension can easily switch between local development and Railway production:
 
-**In `browser_extension/popup.js`:**
+**In `browser_extension/popup_v2.js`:**
 ```js
 const CONFIG = {
   USE_PRODUCTION: false, // Set to true for Railway, false for local
@@ -207,6 +207,18 @@ const CONFIG = {
   LOCAL_URL: 'http://localhost:8080/entries/',
   
   API_KEY: 'career_attendant_dev_987',
+};
+```
+
+**In `browser_extension/background.js`:**
+```js
+const CONFIG = {
+  // Set to true to force production API
+  USE_PRODUCTION: false, // Set to true for Railway, false for local
+  API_URLS: [
+    'http://localhost:8080',
+    'https://careerattendant-production.up.railway.app'
+  ],
 };
 ```
 
@@ -318,9 +330,16 @@ Invoke-RestMethod -Method Get -Uri 'http://localhost:8080/entries/?page=1&pageSi
    ```bash
    DATABASE_URL=${{Postgres.DATABASE_PRIVATE_URL}}  # Use private URL to avoid egress fees
    API_KEY=career_attendant_dev_987
-   CORS_ORIGINS=*
+   FRONTEND_URL=https://careerattendantdash-production.up.railway.app
+   CORS_ORIGINS=http://localhost:5173,http://localhost:3000  # Optional: additional origins
    # DO NOT set DROP_ALL_TABLES in production!
    ```
+   
+   **CORS Configuration:**
+   - `FRONTEND_URL` - Your production frontend URL (required for CORS)
+   - `CORS_ORIGINS` - Comma-separated list of additional allowed origins (optional)
+   - Extension origin is automatically added if `EXTENSION_ID` is set
+   - Set `CORS_ORIGINS=*` for development only (not recommended for production)
 
 3. **Database Setup:**
    - Add Railway's Postgres template to your project

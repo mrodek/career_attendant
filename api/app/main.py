@@ -11,13 +11,23 @@ settings = Settings()
 app = FastAPI(title="JobAid API", version="0.1.0")
 
 # CORS configuration
-allowed_origins = [settings.frontend_url]
-if settings.extension_id:
-    allowed_origins.append(f"chrome-extension://{settings.extension_id}")
+if settings.cors_origins == "*":
+    allowed_origins = ["*"]
+else:
+    # Start with configured CORS origins (comma-separated)
+    allowed_origins = get_cors_origins(settings)
+    # Add frontend URL if not already included
+    if settings.frontend_url and settings.frontend_url not in allowed_origins:
+        allowed_origins.append(settings.frontend_url)
+    # Add extension ID if configured
+    if settings.extension_id:
+        extension_origin = f"chrome-extension://{settings.extension_id}"
+        if extension_origin not in allowed_origins:
+            allowed_origins.append(extension_origin)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins if settings.cors_origins != "*" else ["*"],
+    allow_origins=allowed_origins,
     allow_credentials=settings.cors_origins != "*",  # Can't use credentials with wildcard
     allow_methods=["*"],
     allow_headers=["*"],
