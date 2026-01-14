@@ -3,7 +3,7 @@
 // ==========================================================================
 
 const CONFIG = {
-  USE_PRODUCTION: false,
+  USE_PRODUCTION: true,
   PRODUCTION_URL: 'https://careerattendant-production.up.railway.app',
   LOCAL_URL: 'http://localhost:8080',
 };
@@ -18,7 +18,7 @@ let authState = {
   sessionToken: null,
 };
 
-let DEV_MODE = true;
+let DEV_MODE = false;
 let extractionState = {
   status: 'idle', // idle, extracting, complete, error
   fields: {},

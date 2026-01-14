@@ -2,7 +2,7 @@
 
 const CONFIG = {
   // Set to true to force production API
-  USE_PRODUCTION: false,
+  USE_PRODUCTION: true,
   API_URLS: [
     'http://localhost:8080',
     'https://careerattendant-production.up.railway.app'
@@ -17,6 +17,25 @@ let CLERK_FRONTEND_API = null; // Will be fetched from API
 
 // Auto-detect which API URL is available and get Clerk config
 async function detectApiUrl() {
+  // If USE_PRODUCTION is true, skip auto-detection and use production
+  if (CONFIG.USE_PRODUCTION) {
+    const url = CONFIG.API_URLS[1]; // Production URL
+    try {
+      const response = await fetch(`${url}/health`, { method: 'GET' });
+      if (response.ok) {
+        const data = await response.json();
+        API_BASE_URL = url;
+        CLERK_FRONTEND_API = data.clerk_frontend_api;
+        console.log('API detected at:', API_BASE_URL);
+        console.log('Clerk Frontend API:', CLERK_FRONTEND_API);
+        return;
+      }
+    } catch (error) {
+      console.error('Production API not available:', error);
+    }
+  }
+  
+  // Auto-detect from all URLs
   for (const url of CONFIG.API_URLS) {
     try {
       const response = await fetch(`${url}/health`, { method: 'GET' });
