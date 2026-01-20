@@ -61,5 +61,12 @@ class DataEncryption:
         except Exception:
             return None
 
-# Global encryption instance
-encryption = DataEncryption()
+# Lazy encryption instance - only created when needed
+_encryption = None
+
+def get_encryption():
+    """Get encryption instance, creating it lazily."""
+    global _encryption
+    if _encryption is None:
+        _encryption = DataEncryption()
+    return _encryption

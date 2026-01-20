@@ -296,14 +296,14 @@ def save_to_db_node(db_url: str):
             if resume:
                 if state.get("llm_extracted_json"):
                     # Encrypt the JSON data before saving
-                    from ..encryption import encryption
-                    encrypted_json = encryption.encrypt_json(state["llm_extracted_json"])
+                    from ..encryption import get_encryption
+                    encrypted_json = get_encryption().encrypt_json(state["llm_extracted_json"])
                     resume.llm_extracted_json = encrypted_json
                     
                 if state.get("raw_text"):
                     # Encrypt the raw text before saving
-                    from ..encryption import encryption
-                    encrypted_text = encryption.encrypt_text(state["raw_text"])
+                    from ..encryption import get_encryption
+                    encrypted_text = get_encryption().encrypt_text(state["raw_text"])
                     resume.raw_text = encrypted_text
                 
                 if state.get("error_message"):

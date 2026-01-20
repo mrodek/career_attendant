@@ -70,8 +70,8 @@ class Resume(Base):
         if not self.raw_text:
             return None
         try:
-            from .encryption import encryption
-            return encryption.decrypt_text(self.raw_text)
+            from .encryption import get_encryption
+            return get_encryption().decrypt_text(self.raw_text)
         except Exception:
             return self.raw_text
     
@@ -81,8 +81,8 @@ class Resume(Base):
         if not self.llm_extracted_json:
             return None
         try:
-            from .encryption import encryption
-            return encryption.decrypt_json(self.llm_extracted_json)
+            from .encryption import get_encryption
+            return get_encryption().decrypt_json(self.llm_extracted_json)
         except Exception:
             return self.llm_extracted_json
 
