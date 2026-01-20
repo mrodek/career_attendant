@@ -69,7 +69,7 @@ class AuthMiddleware:
             return await call_next(request)
         
         # Skip auth for public endpoints
-        public_paths = ['/docs', '/openapi.json', '/health', '/api/auth/webhook', '/api/auth/create-session', '/auth/login', '/auth/callback', '/extract']
+        public_paths = ['/docs', '/openapi.json', '/health', '/api/auth/webhook', '/api/auth/create-session', '/auth/login', '/auth/callback', '/extract', '/favicon.ico']
         
         # Check if path starts with any public path
         if any(request.url.path.startswith(path) for path in public_paths):
@@ -81,6 +81,15 @@ class AuthMiddleware:
             request.state.user_id = "dev_user"
             request.state.session_id = "dev_session"
             request.state.user_email = "dev@example.com"
+            return await call_next(request)
+        
+        # Check for API key authentication (development/legacy support)
+        api_key = request.headers.get('X-API-Key')
+        if api_key and api_key == settings.api_key:
+            logger.debug("API key authentication successful")
+            request.state.user_id = "api_user"
+            request.state.session_id = "api_session"
+            request.state.user_email = "api@example.com"
             return await call_next(request)
         
         # Extract token from header
