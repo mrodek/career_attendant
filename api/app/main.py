@@ -3,13 +3,25 @@ import logging
 import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .config import Settings, get_cors_origins, get_settings
+from .config import Settings, get_cors_origins
 from .logger import logger
 from .routers import entries, auth, auth_page, analyze, extract, resumes
 from .auth.middleware import AuthMiddleware
 from .startup import init_db
 
+# Configure more detailed logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.StreamHandler(sys.stderr)
+    ]
+)
+
 settings = Settings()
+logger.info(f"Starting application with PORT={settings.app_port}")
+logger.info(f"Environment variables: DATABASE_URL={'SET' if settings.database_url else 'NOT SET'}, ENCRYPTION_MASTER_KEY={'SET' if os.getenv('ENCRYPTION_MASTER_KEY') else 'NOT SET'}")
 
 app = FastAPI(title="JobAid API", version="0.1.0")
 
