@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Literal, Any, List
 from datetime import datetime, date
+from uuid import UUID
 
 
 # === Job Schemas (shared job data) ===
@@ -97,6 +98,76 @@ class JobOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# === Resume Schemas ===
+
+class ResumeBase(BaseModel):
+    resume_name: str
+    is_primary: Optional[bool] = False
+
+class ResumeCreate(ResumeBase):
+    pass
+
+class ResumeUpdate(ResumeBase):
+    resume_name: Optional[str] = None
+    is_primary: Optional[bool] = None
+
+class ResumeOut(ResumeBase):
+    id: UUID
+    user_id: str
+    file_name: str
+    file_path: str
+    file_size: int
+    file_type: str
+    processing_status: str
+    error_message: Optional[str] = None
+    raw_text: Optional[str] = None  # Will be decrypted in the router
+    llm_extracted_json: Optional[dict] = None  # Will be decrypted in the router
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ResumeOutWithDecrypted(ResumeBase):
+    """Resume output with decrypted sensitive data."""
+    id: UUID
+    user_id: str
+    file_name: str
+    file_path: str
+    file_size: int
+    file_type: str
+    processing_status: str
+    error_message: Optional[str] = None
+    raw_text: Optional[str] = None
+    llm_extracted_json: Optional[dict] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+        
+    @classmethod
+    def from_resume(cls, resume):
+        """Create ResumeOutWithDecrypted from Resume model with decrypted data."""
+        return cls(
+            id=resume.id,
+            user_id=resume.user_id,
+            resume_name=resume.resume_name,
+            is_primary=resume.is_primary,
+            file_name=resume.file_name,
+            file_path=resume.file_path,
+            file_size=resume.file_size,
+            file_type=resume.file_type,
+            processing_status=resume.processing_status,
+            error_message=resume.error_message,
+            raw_text=resume.decrypted_raw_text,
+            llm_extracted_json=resume.decrypted_llm_extracted_json,
+            created_at=resume.created_at,
+            updated_at=resume.updated_at,
+        )
 
 
 # === SavedJob Schemas (user-specific tracking) ===

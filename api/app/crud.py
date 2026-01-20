@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from . import models
+from . import models, schemas
 from .models import User, SavedJob, Job
 from .schemas import EntryIn
 from typing import Optional, Tuple
@@ -218,6 +218,35 @@ def get_saved_job_by_url(db: Session, user_id: str, job_url: str) -> Optional[Sa
         .one_or_none()
     )
 
+
+def create_resume(
+    db: Session,
+    user_id: str,
+    resume_name: str,
+    file_name: str,
+    file_path: str,
+    file_size: int,
+    file_type: str,
+    is_primary: bool,
+) -> models.Resume:
+    """Create a new resume record."""
+    # If this resume is set as primary, ensure no other resumes for this user are primary
+    if is_primary:
+        db.query(models.Resume).filter(models.Resume.user_id == user_id).update({"is_primary": False})
+
+    db_resume = models.Resume(
+        user_id=user_id,
+        resume_name=resume_name,
+        file_name=file_name,
+        file_path=file_path,
+        file_size=file_size,
+        file_type=file_type,
+        is_primary=is_primary,
+    )
+    db.add(db_resume)
+    db.commit()
+    db.refresh(db_resume)
+    return db_resume
 
 def get_job_by_url(db: Session, job_url: str) -> Optional[Job]:
     """

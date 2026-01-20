@@ -2,42 +2,78 @@
 
 An AI-powered job search assistant with a Chrome extension, React frontend, and FastAPI backend powered by LangGraph for intelligent job analysis.
 
+## Table of Contents
+
+- [Architecture Overview](#architecture-overview)
+- [Structure](#structure)
+- [Prereqs](#prereqs)
+- [LangGraph Pipeline](#langgraph-pipeline)
+  - [Pipeline Nodes](#pipeline-nodes)
+  - [Extracted Fields](#extracted-fields)
+  - [Streaming Extraction](#streaming-extraction)
+- [Resume Upload & Processing](#resume-upload--processing)
+  - [Resume Pipeline Architecture](#resume-pipeline-architecture)
+  - [Extracted Resume Fields](#extracted-resume-fields)
+  - [Resume API Endpoints](#resume-api-endpoints)
+  - [Processing Flow](#processing-flow)
+- [Quick Start](#quick-start)
+- [Run with Docker (Local Development)](#run-with-docker-local-development)
+- [Local Development (API) without Docker](#local-development-api-without-docker)
+- [Browser Extension Setup](#browser-extension-setup)
+- [Database Schema](#database-schema)
+- [API Quick Test (PowerShell)](#api-quick-test-powershell)
+- [Environment Variables](#environment-variables)
+- [Deployment on Railway](#deployment-on-railway)
+- [Database Migrations (Alembic)](#database-migrations-alembic)
+
+---
+
 ## Architecture Overview
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Browser        │     │  React          │     │  FastAPI        │
-│  Extension      │────▶│  Frontend       │────▶│  Backend        │
-│  (Chrome MV3)   │     │  (Vite + TS)    │     │  (Python 3.11)  │
-└─────────────────┘     └─────────────────┘     └────────┬────────┘
-                                                         │
-                              ┌──────────────────────────┼──────────────────────────┐
-                              │                          ▼                          │
-                              │  ┌─────────────────────────────────────────────┐   │
-                              │  │           LangGraph Pipeline                 │   │
-                              │  │                                              │   │
-                              │  │  ┌─────────┐   ┌─────────┐   ┌─────────┐    │   │
-                              │  │  │ Ingest  │──▶│Preprocess│──▶│ Extract │    │   │
-                              │  │  └─────────┘   └─────────┘   └────┬────┘    │   │
-                              │  │                                    │         │   │
-                              │  │  ┌─────────┐   ┌─────────┐        │         │   │
-                              │  │  │ Persist │◀──│Summarize│◀───────┘         │   │
-                              │  │  └────┬────┘   └─────────┘                   │   │
-                              │  │       │                                      │   │
-                              │  └───────┼──────────────────────────────────────┘   │
-                              │          ▼                                          │
-                              │  ┌──────────────┐        ┌──────────────┐           │
-                              │  │  PostgreSQL  │        │   ChromaDB   │           │
-                              │  │  (Jobs, Users)│        │  (Embeddings)│           │
-                              │  └──────────────┘        └──────────────┘           │
-                              └─────────────────────────────────────────────────────┘
+┌─────────────────┐                          ┌─────────────────┐
+│  Browser        │                          │  React          │
+│  Extension      │─────────┐    ┌──────────▶│  Frontend       │
+│  (Chrome MV3)   │         │    │           │  (Vite + TS)    │
+└─────────────────┘         │    │           └─────────────────┘
+     Scrapes jobs           │    │              Resume upload
+                            ▼    │              Job dashboard
+                     ┌──────────────────┐
+                     │     FastAPI      │
+                     │     Backend      │
+                     │   (Python 3.11)  │
+                     └────────┬─────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        │                     ▼                     │
+        │  ┌────────────────────────────────────┐   │
+        │  │      Job Intake Pipeline           │   │
+        │  │  Ingest → Preprocess → Extract     │   │
+        │  │              → Summarize → Persist │   │
+        │  └────────────────────────────────────┘   │
+        │                                           │
+        │  ┌────────────────────────────────────┐   │
+        │  │      Resume Pipeline               │   │
+        │  │  Extract Text → Parse LLM → Save   │   │
+        │  └────────────────────────────────────┘   │
+        │                     │                     │
+        │                     ▼                     │
+        │  ┌──────────────┐        ┌──────────────┐ │
+        │  │  PostgreSQL  │        │   ChromaDB   │ │
+        │  │ Jobs, Users, │        │ (Embeddings) │ │
+        │  │   Resumes    │        └──────────────┘ │
+        │  └──────────────┘                         │
+        └───────────────────────────────────────────┘
 ```
 
 ## Structure
 - `browser_extension/` – Chrome MV3 extension for scraping job postings
 - `frontend/` – React + Vite + TypeScript dashboard
-- `api/` – FastAPI backend with LangGraph pipeline
-  - `api/app/graphs/` – LangGraph nodes and state management
+  - `frontend/src/pages/ResumesPage.tsx` – Resume management UI
+  - `frontend/src/hooks/use-resumes.ts` – TanStack Query hooks for resume API
+- `api/` – FastAPI backend with LangGraph pipelines
+  - `api/app/graphs/job_intake_graph.py` – Job extraction pipeline
+  - `api/app/graphs/resume_graph.py` – Resume processing pipeline
   - `api/app/routers/` – API endpoints
   - `api/app/models.py` – SQLAlchemy ORM models
 - `docker-compose.yml` – PostgreSQL + API services
@@ -79,6 +115,57 @@ The `/extract/stream` endpoint uses Server-Sent Events (SSE) to stream real-time
 [ingest] → [preprocess] → [extract] → [summarize] → done
    5%          25%           60%          90%        100%
 ```
+
+## Resume Upload & Processing
+
+Users can upload resumes (PDF/DOCX) which are processed through a dedicated LangGraph pipeline:
+
+### Resume Pipeline Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  extract_text   │───▶│  parse_with_llm │───▶│   save_to_db    │───▶ END
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### Pipeline Nodes
+
+| Node | Description | LLM? |
+|------|-------------|------|
+| **extract_text** | Converts PDF/DOCX binary to plain text using pypdf/python-docx | No |
+| **parse_with_llm** | Sends text to GPT-4o-mini with comprehensive extraction prompt | ✅ |
+| **save_to_db** | Persists raw text and structured JSON to PostgreSQL | No |
+
+### Extracted Resume Fields
+
+The LLM extraction produces a detailed JSON structure:
+- **candidate_profile**: name, email, phone, location, current_title, years_experience
+- **professional_summary**: summary_text, key_strengths, career_focus
+- **work_history**: Each role with company, title, dates, responsibilities (with categories), achievements (with metrics)
+- **education**: institution, degree, field, graduation_year, honors
+- **skills_inventory**: technical_skills (with proficiency/evidence), soft_skills, languages, certifications
+- **leadership_profile**: team_size_managed, people_management_evidence, budget_responsibility
+- **career_trajectory**: total_jobs, average_tenure, title_progression, seniority_assessment
+- **parsing_metadata**: format, quality, confidence, inferred_data_points
+
+### Resume API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/resumes/` | Upload a resume (multipart form: file + resume_name + is_primary) |
+| `GET` | `/resumes/` | List all resumes for current user |
+| `GET` | `/resumes/{id}` | Get specific resume with extracted data |
+| `PATCH` | `/resumes/{id}` | Update resume metadata (name, is_primary) |
+| `DELETE` | `/resumes/{id}` | Delete a resume |
+
+### Processing Flow
+
+1. User uploads PDF/DOCX via frontend (`/resumes` page)
+2. File saved to `api/uploads/<user_id>/<filename>`
+3. Database record created with `processing_status: pending`
+4. Background task starts LangGraph pipeline
+5. Status updates: `pending` → `processing` → `completed` (or `failed`)
+6. Frontend polls/refreshes to show extracted data
 
 ## Quick Start
 
@@ -271,6 +358,18 @@ Core job data extracted by the LangGraph pipeline:
 - `interest_level`, `application_status`, `notes`
 - `created_at`, `updated_at` (TIMESTAMP)
 
+### Resumes Table
+- `id` (UUID) - Primary key
+- `user_id` (VARCHAR) - Foreign key to users
+- `resume_name` (VARCHAR) - User-friendly name
+- `file_name`, `file_path`, `file_size`, `file_type` - File metadata
+- `raw_text` (TEXT) - Extracted plain text
+- `llm_extracted_json` (JSON) - Structured resume data from LLM
+- `processing_status` (VARCHAR) - pending/processing/completed/failed
+- `error_message` (TEXT) - Error details if failed
+- `is_primary` (BOOLEAN) - User's primary resume for job matching
+- `created_at`, `updated_at` (TIMESTAMP)
+
 ## API Quick Test (PowerShell)
 
 ```powershell
@@ -384,3 +483,74 @@ docker run -it --rm postgres:15 psql "<DATABASE_PUBLIC_URL>"
 5. Verify data in Railway Postgres → Data tab
 
 **Note:** Always test locally first using Docker. Railway is for production deployment and testing the hosted environment.
+
+## Database Migrations (Alembic)
+
+### Switching Between Local and Railway
+
+**IMPORTANT:** When running Alembic migrations, you MUST set the correct `DATABASE_URL` environment variable. The variable persists for your entire PowerShell session, so always verify which database you're targeting.
+
+**For Local Development (Docker):**
+```powershell
+$env:DATABASE_URL="postgresql+psycopg://jobaid:jobaidpass@localhost:5432/jobaid"
+alembic upgrade head
+```
+
+**For Railway Production:**
+```powershell
+$env:DATABASE_URL="postgresql://postgres:<PASSWORD>@turntable.proxy.rlwy.net:<PORT>/railway"
+alembic upgrade head
+```
+
+**To Clear the Environment Variable:**
+```powershell
+Remove-Item Env:DATABASE_URL
+```
+
+**To Check Current Target:**
+```powershell
+$env:DATABASE_URL
+```
+
+### Common Migration Commands
+
+```powershell
+# Check current migration version
+alembic current
+
+# Create a new migration (auto-detect changes)
+alembic revision --autogenerate -m "description_of_changes"
+
+# Apply all pending migrations
+alembic upgrade head
+
+# Rollback one migration
+alembic downgrade -1
+
+# Stamp database to a specific version (without running migrations)
+# Useful for syncing version history when schema already matches
+alembic stamp <revision_id>
+alembic stamp head  # Mark as fully migrated
+```
+
+### Troubleshooting Migration Issues
+
+If migrations get out of sync between local and Railway:
+
+1. **Check the current version in both databases:**
+   ```sql
+   SELECT * FROM alembic_version;
+   ```
+
+2. **If table exists but version is wrong, use `stamp`:**
+   ```powershell
+   alembic stamp head
+   ```
+
+3. **If version is ahead of actual schema, stamp back and upgrade:**
+   ```powershell
+   alembic stamp <previous_revision>
+   alembic upgrade head
+   ```
+
+**Warning:** Never run `alembic downgrade base` on a database with existing data unless you're prepared to lose it.

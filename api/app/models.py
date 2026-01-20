@@ -40,6 +40,51 @@ class User(Base):
     saved_jobs = relationship("SavedJob", back_populates="user")
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
     feature_access = relationship("FeatureAccess", back_populates="user", cascade="all, delete-orphan")
+    resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")
+
+
+class Resume(Base):
+    __tablename__ = "resumes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    resume_name = Column(String(255), nullable=False)
+    file_name = Column(String(255), nullable=False)
+    file_path = Column(String(1024), nullable=False)
+    file_size = Column(Integer, nullable=False)
+    file_type = Column(String(100), nullable=False)
+    raw_text = Column(Text, nullable=True)
+    llm_extracted_json = Column(JSON, nullable=True)
+    processing_status = Column(String(50), nullable=False, server_default="pending")
+    error_message = Column(Text, nullable=True)
+    is_primary = Column(Boolean, nullable=False, server_default="false")
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    user = relationship("User", back_populates="resumes")
+    
+    # Decryption properties for accessing encrypted data
+    @property
+    def decrypted_raw_text(self) -> str:
+        """Get decrypted raw text."""
+        if not self.raw_text:
+            return None
+        try:
+            from .encryption import encryption
+            return encryption.decrypt_text(self.raw_text)
+        except Exception:
+            return self.raw_text
+    
+    @property
+    def decrypted_llm_extracted_json(self) -> dict:
+        """Get decrypted LLM extracted JSON."""
+        if not self.llm_extracted_json:
+            return None
+        try:
+            from .encryption import encryption
+            return encryption.decrypt_json(self.llm_extracted_json)
+        except Exception:
+            return self.llm_extracted_json
 
 
 class Job(Base):

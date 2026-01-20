@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, LayoutDashboard, Bookmark, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Home, LayoutDashboard, Bookmark, FileText, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useUIStore } from '../../stores/ui-store'
 
 const navItems = [
   { path: '/', icon: Home, label: 'Home' },
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/jobs', icon: Bookmark, label: 'Saved Jobs' },
+  { path: '/resumes', icon: FileText, label: 'My Resumes' },
 ]
 
 export default function Sidebar() {

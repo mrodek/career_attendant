@@ -8,9 +8,9 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 
 # Set test environment BEFORE importing app modules
-os.environ.setdefault("API_KEY", "dev_api_key")
-os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
-os.environ.setdefault("DEV_MODE", "true")  # Bypass JWT auth in tests
+os.environ["API_KEY"] = "dev_api_key"
+os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
+os.environ["DEV_MODE"] = "true"  # Bypass JWT auth in tests
 
 # Ensure the 'app' package (api/app) is importable when running tests from api/
 API_DIR = Path(__file__).resolve().parents[1]  # points to .../api
@@ -20,10 +20,14 @@ if str(API_DIR) not in sys.path:
 from app.main import app  # noqa: E402
 from app.db import Base  # noqa: E402
 from app.db import get_db  # noqa: E402
+# Import all models to ensure they register with Base.metadata
+from app import models  # noqa: F401
 
 # Create a dedicated SQLite engine for tests that shares the same in-memory DB
+# Force SQLite regardless of environment
+test_db_url = "sqlite+pysqlite:///:memory:"
 engine = create_engine(
-    os.environ["DATABASE_URL"],
+    test_db_url,
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
