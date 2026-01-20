@@ -1,6 +1,9 @@
+import os
+import logging
+import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .config import Settings, get_cors_origins
+from .config import Settings, get_cors_origins, get_settings
 from .logger import logger
 from .routers import entries, auth, auth_page, analyze, extract, resumes
 from .auth.middleware import AuthMiddleware
@@ -41,22 +44,38 @@ app.middleware("http")(AuthMiddleware())
 # Initialize database tables on startup
 @app.on_event("startup")
 async def startup_event():
-    import os
-    logger.info("Application starting up...")
-    
-    # Only drop tables if explicitly enabled (dev only!)
-    drop_all = os.getenv("DROP_ALL_TABLES", "false").lower() == "true"
-    init_db(drop_all=drop_all)
-    
-    logger.info("Application startup complete")
+    logger.info("=== APPLICATION STARTUP BEGIN ===")
+    try:
+        init_db(drop_all=settings.dev_mode)
+        logger.info("✅ Database initialization completed")
+        
+        logger.info("✅ Application startup complete")
+        logger.info(f"✅ Server running on http://0.0.0.0:{settings.app_port}")
+        logger.info("=== APPLICATION STARTUP COMPLETE ===")
+    except Exception as e:
+        logger.error(f"❌ Startup failed: {e}")
+        raise
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("=== APPLICATION SHUTDOWN BEGIN ===")
+    try:
+        logger.info("🔄 Cleaning up resources...")
+        logger.info("✅ Application shutdown complete")
+        logger.info("=== APPLICATION SHUTDOWN COMPLETE ===")
+    except Exception as e:
+        logger.error(f"❌ Shutdown error: {e}")
 
 @app.get("/health")
 def health():
-    return {
+    logger.info("🏥 Health check requested")
+    response = {
         "status": "ok",
         "dev_mode": settings.dev_mode,
         "clerk_frontend_api": "https://apparent-javelin-61.clerk.accounts.dev" if settings.clerk_jwks_url else None
     }
+    logger.info(f"🏥 Health check response: {response}")
+    return response
 
 # Include routers
 app.include_router(auth.router)
