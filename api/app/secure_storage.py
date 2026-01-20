@@ -1,7 +1,7 @@
 import os
 import aiofiles
 from fastapi import UploadFile
-from .encryption import encryption
+from .encryption import get_encryption
 import uuid
 import gzip
 
@@ -28,7 +28,7 @@ class SecureLocalStorage:
         compressed_content = gzip.compress(content)
         
         # Encrypt compressed content
-        encrypted_content = encryption.cipher.encrypt(compressed_content)
+        encrypted_content = get_encryption().cipher.encrypt(compressed_content)
         
         # Save encrypted file
         async with aiofiles.open(file_path, 'wb') as out_file:
@@ -42,7 +42,7 @@ class SecureLocalStorage:
             encrypted_content = await in_file.read()
         
         # Decrypt and decompress
-        compressed_content = encryption.cipher.decrypt(encrypted_content)
+        compressed_content = get_encryption().cipher.decrypt(encrypted_content)
         original_content = gzip.decompress(compressed_content)
         
         return original_content
