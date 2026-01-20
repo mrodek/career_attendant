@@ -42,6 +42,12 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     ...(fetchOptions.headers as Record<string, string>),
   }
   
+  // Add API key for development/legacy support
+  const apiKey = import.meta.env.VITE_API_KEY
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey
+  }
+  
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
   }
