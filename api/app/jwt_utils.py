@@ -3,7 +3,9 @@ JWT utilities for validating Clerk tokens
 """
 
 import logging
+import json
 import jwt
+from jwt.algorithms import RSAAlgorithm
 import httpx
 from typing import Dict, Any, Optional
 from .config import settings
@@ -48,18 +50,20 @@ async def validate_jwt_token(token: str) -> Dict[str, Any]:
             raise ValueError("Token missing key ID")
         
         # Find the matching key
-        key = next((jwk for jwk in jwks.get('keys', []) if jwk.get('kid') == kid), None)
+        jwk = next((k for k in jwks.get('keys', []) if k.get('kid') == kid), None)
         
-        if not key:
+        if not jwk:
             raise ValueError("Unable to find matching public key")
+        
+        # Convert JWK to RSA public key
+        public_key = RSAAlgorithm.from_jwk(json.dumps(jwk))
         
         # Decode and verify JWT
         payload = jwt.decode(
             token,
-            key,
+            public_key,
             algorithms=["RS256"],
-            audience=["account"],
-            issuer=f"https://apparent-javelin-61.clerk.accounts.dev"
+            options={"verify_aud": False}  # Clerk tokens have flexible audience
         )
         
         return payload

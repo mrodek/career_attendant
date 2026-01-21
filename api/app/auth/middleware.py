@@ -72,10 +72,10 @@ class AuthMiddleware:
             try:
                 from ..jwt_utils import validate_jwt_token
                 payload = await validate_jwt_token(token)
-                request.state.user_id = payload.sub
-                request.state.session_id = payload.sid
-                request.state.user_email = payload.email
-                logger.info(f"✅ JWT authentication successful for user: {payload.sub}")
+                request.state.user_id = payload['sub']
+                request.state.session_id = payload.get('sid', '')
+                request.state.user_email = payload.get('email', '')
+                logger.info(f"✅ JWT authentication successful for user: {payload['sub']}")
                 return await call_next(request)
             except Exception as e:
                 logger.warning(f"JWT validation failed: {e}")
