@@ -42,16 +42,18 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     ...(fetchOptions.headers as Record<string, string>),
   }
   
-  // Add API key for development/legacy support
-  const apiKey = import.meta.env.VITE_API_KEY
-  console.log('API Client - VITE_API_KEY:', apiKey)
-  if (apiKey) {
-    headers['X-API-Key'] = apiKey
-    console.log('API Client - Added X-API-Key header:', apiKey)
-  }
-  
+  // Prioritize JWT token for proper user authentication
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
+    console.log('API Client - Using JWT token authentication')
+  } else {
+    // Fallback to API key only if no JWT token available
+    const apiKey = import.meta.env.VITE_API_KEY
+    console.log('API Client - No JWT token, using API key fallback:', apiKey)
+    if (apiKey) {
+      headers['X-API-Key'] = apiKey
+      console.log('API Client - Added X-API-Key header:', apiKey)
+    }
   }
 
   const response = await fetch(url, {

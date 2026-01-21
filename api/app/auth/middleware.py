@@ -43,7 +43,7 @@ def is_public_path(path: str) -> bool:
     return False
 
 class AuthMiddleware:
-    """Main authentication middleware - API key authentication"""
+    """Main authentication middleware - JWT first, API key fallback"""
     
     async def __call__(self, request: Request, call_next):
         logger.info(f"🔐 AuthMiddleware called for: {request.url.path}")
@@ -61,14 +61,26 @@ class AuthMiddleware:
             request.state.user_email = "dev@example.com"
             return await call_next(request)
         
-        # Check for API key authentication
-        api_key = request.headers.get('X-API-Key')
-        logger.info(f"Received API key: {api_key}")
-        logger.info(f"Expected API key: {settings.api_key}")
-        logger.info(f"API keys match: {api_key == settings.api_key}")
+        # JWT authentication (priority)
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                from ..jwt_utils import validate_jwt_token
+                payload = await validate_jwt_token(token)
+                request.state.user_id = payload.sub
+                request.state.session_id = payload.sid
+                request.state.user_email = payload.email
+                logger.info(f"✅ JWT authentication successful for user: {payload.sub}")
+                return await call_next(request)
+            except Exception as e:
+                logger.warning(f"JWT validation failed: {e}")
+                # Continue to API key fallback
         
+        # API key authentication (fallback - for development only)
+        api_key = request.headers.get('X-API-Key')
         if api_key and api_key == settings.api_key:
-            logger.info("API key authentication successful")
+            logger.warning("⚠️  Using API key auth - not secure for production!")
             request.state.user_id = "api_user"
             request.state.session_id = "api_session"
             request.state.user_email = "api@example.com"
