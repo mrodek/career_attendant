@@ -160,9 +160,9 @@ async def create_session(
     4. Extension uses session token for all subsequent requests
     """
     try:
-        # Validate the Clerk JWT using the middleware's JWT validation
+        # Validate the Clerk JWT using JWT utilities
         from jose import jwt
-        from ..auth.middleware import get_jwks_keys
+        from ..jwt_utils import get_jwks_keys
         
         # Get unverified header to find the key ID
         unverified_header = jwt.get_unverified_header(request.clerk_jwt)
