@@ -42,32 +42,34 @@ def is_public_path(path: str) -> bool:
     
     return False
 
-async def AuthenticationMiddleware(request: Request, call_next):
+class AuthMiddleware:
     """Main authentication middleware - API key authentication"""
-    # Public paths that don't require authentication
-    if is_public_path(request.url.path):
-        return await call_next(request)
     
-    # Development mode: bypass authentication if explicitly enabled
-    if settings.dev_mode:
-        logger.warning("⚠️  DEV_MODE enabled - bypassing authentication (NEVER use in production!)")
-        request.state.user_id = "dev_user"
-        request.state.session_id = "dev_session"
-        request.state.user_email = "dev@example.com"
-        return await call_next(request)
-    
-    # Check for API key authentication
-    api_key = request.headers.get('X-API-Key')
-    if api_key and api_key == settings.api_key:
-        logger.debug("API key authentication successful")
-        request.state.user_id = "api_user"
-        request.state.session_id = "api_session"
-        request.state.user_email = "api@example.com"
-        return await call_next(request)
-    
-    # No valid authentication found
-    logger.warning(f"Auth failed for {request.url.path}: Missing or invalid authorization header")
-    return auth_error_response(
-        status.HTTP_401_UNAUTHORIZED,
-        "Missing or invalid authorization header"
-    )
+    async def __call__(self, request: Request, call_next):
+        # Public paths that don't require authentication
+        if is_public_path(request.url.path):
+            return await call_next(request)
+        
+        # Development mode: bypass authentication if explicitly enabled
+        if settings.dev_mode:
+            logger.warning("⚠️  DEV_MODE enabled - bypassing authentication (NEVER use in production!)")
+            request.state.user_id = "dev_user"
+            request.state.session_id = "dev_session"
+            request.state.user_email = "dev@example.com"
+            return await call_next(request)
+        
+        # Check for API key authentication
+        api_key = request.headers.get('X-API-Key')
+        if api_key and api_key == settings.api_key:
+            logger.debug("API key authentication successful")
+            request.state.user_id = "api_user"
+            request.state.session_id = "api_session"
+            request.state.user_email = "api@example.com"
+            return await call_next(request)
+        
+        # No valid authentication found
+        logger.warning(f"Auth failed for {request.url.path}: Missing or invalid authorization header")
+        return auth_error_response(
+            status.HTTP_401_UNAUTHORIZED,
+            "Missing or invalid authorization header"
+        )
