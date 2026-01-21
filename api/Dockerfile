@@ -20,4 +20,4 @@ COPY test_simple.py ./
 RUN mkdir -p /app/uploads
 EXPOSE 8080
 
-CMD ["python", "test_simple.py"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
