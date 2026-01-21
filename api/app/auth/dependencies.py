@@ -40,6 +40,15 @@ async def get_current_user(
                 full_name="Dev User",
                 subscription_tier="free"
             )
+        elif user_id == "api_user":
+            # API key authentication - create system user
+            user = User(
+                id="api_user",
+                email="api@example.com",
+                username="apiuser",
+                full_name="API User",
+                subscription_tier="free"
+            )
         elif user_id.startswith("user_"):
             # Real Clerk user - auto-create on first sign-in
             user = User(
