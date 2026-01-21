@@ -208,8 +208,23 @@ def extract_text_node(state: ResumeProcessingState) -> ResumeProcessingState:
         file_path = state["file_path"]
         file_type = state.get("file_type", "")
         
-        with open(file_path, "rb") as f:
-            content = f.read()
+        # Check if file is encrypted (has .enc in filename)
+        if '.enc' in file_path:
+            # Decrypt file using secure storage
+            import asyncio
+            from ..secure_storage import SecureLocalStorage
+            storage = SecureLocalStorage()
+            # Run async read in sync context
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                content = loop.run_until_complete(storage.read_file(file_path))
+            finally:
+                loop.close()
+        else:
+            # Read unencrypted file directly
+            with open(file_path, "rb") as f:
+                content = f.read()
         
         if "pdf" in file_type.lower():
             raw_text = extract_text_from_pdf(content)
