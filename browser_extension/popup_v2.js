@@ -355,9 +355,16 @@ async function runFullExtraction() {
   
   try {
     // Use fetch with streaming for SSE
+    const headers = { 'Content-Type': 'application/json' };
+
+    // Add authorization if available (unless in DEV_MODE)
+    if (authState.isAuthenticated && authState.sessionToken && !DEV_MODE) {
+      headers['Authorization'] = `Bearer ${authState.sessionToken}`;
+    }
+
     const response = await fetch(`${API_BASE}/extract/stream`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify({
         job_url: currentUrl,
         raw_text: rawText,
