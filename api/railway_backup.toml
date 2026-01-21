@@ -3,8 +3,11 @@ builder = "NIXPACKS"
 
 [deploy]
 healthcheckPath = "/health"
-healthcheckTimeout = 5000
+healthcheckTimeout = 10000
 restartPolicyType = "ON_FAILURE"
 
-[start]
-cmd = "python test_simple.py"
+[[services]]
+name = "api"
+
+[services.variables]
+PORT = "8080"
