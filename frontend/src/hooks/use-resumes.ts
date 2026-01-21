@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Resume, ResumeUploadPayload, ResumeUpdatePayload } from '../types/resume'
+import { apiClient } from '../lib/api-client'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 const RESUMES_QUERY_KEY = ['resumes']
@@ -9,10 +10,7 @@ export function useResumes() {
   return useQuery({
     queryKey: RESUMES_QUERY_KEY,
     queryFn: async (): Promise<Resume[]> => {
-      const response = await fetch(`${API_BASE_URL}/resumes/`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch resumes')
-      }
+      const response = await apiClient(`${API_BASE_URL}/resumes/`)
       return response.json()
     },
   })
@@ -23,10 +21,7 @@ export function useResume(id: string | null) {
   return useQuery({
     queryKey: [...RESUMES_QUERY_KEY, id],
     queryFn: async (): Promise<Resume> => {
-      const response = await fetch(`${API_BASE_URL}/resumes/${id}`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch resume')
-      }
+      const response = await apiClient(`${API_BASE_URL}/resumes/${id}`)
       return response.json()
     },
     enabled: !!id,
@@ -44,15 +39,10 @@ export function useUploadResume() {
       formData.append('is_primary', String(payload.is_primary ?? false))
       formData.append('file', payload.file)
 
-      const response = await fetch(`${API_BASE_URL}/resumes/`, {
+      const response = await apiClient(`${API_BASE_URL}/resumes/`, {
         method: 'POST',
         body: formData,
       })
-
-      if (!response.ok) {
-        const error = await response.text()
-        throw new Error(error || 'Failed to upload resume')
-      }
 
       return response.json()
     },
@@ -68,17 +58,10 @@ export function useUpdateResume() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: ResumeUpdatePayload }): Promise<Resume> => {
-      const response = await fetch(`${API_BASE_URL}/resumes/${id}`, {
+      const response = await apiClient(`${API_BASE_URL}/resumes/${id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(updates),
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to update resume')
-      }
 
       return response.json()
     },
@@ -94,13 +77,9 @@ export function useDeleteResume() {
 
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      const response = await fetch(`${API_BASE_URL}/resumes/${id}`, {
+      await apiClient(`${API_BASE_URL}/resumes/${id}`, {
         method: 'DELETE',
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to delete resume')
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RESUMES_QUERY_KEY })
