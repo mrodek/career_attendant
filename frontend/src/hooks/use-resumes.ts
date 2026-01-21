@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Resume, ResumeUploadPayload, ResumeUpdatePayload } from '../types/resume'
 import { api } from '../lib/api-client'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 const RESUMES_QUERY_KEY = ['resumes']
 
 // Fetch all resumes for current user
@@ -10,7 +9,7 @@ export function useResumes() {
   return useQuery({
     queryKey: RESUMES_QUERY_KEY,
     queryFn: async (): Promise<Resume[]> => {
-      const response = await api.get<Resume[]>(`${API_BASE_URL}/resumes/`)
+      const response = await api.get<Resume[]>('/resumes/')
       return response
     },
   })
@@ -21,7 +20,7 @@ export function useResume(id: string | null) {
   return useQuery({
     queryKey: [...RESUMES_QUERY_KEY, id],
     queryFn: async (): Promise<Resume> => {
-      const response = await api.get<Resume>(`${API_BASE_URL}/resumes/${id}`)
+      const response = await api.get<Resume>(`/resumes/${id}`)
       return response
     },
     enabled: !!id,
@@ -39,7 +38,7 @@ export function useUploadResume() {
       formData.append('is_primary', String(payload.is_primary ?? false))
       formData.append('file', payload.file)
 
-      const response = await api.post<Resume>(`${API_BASE_URL}/resumes/`, formData, {
+      const response = await api.post<Resume>('/resumes/', formData, {
         headers: {}, // Let browser set Content-Type for FormData
       })
 
@@ -57,7 +56,7 @@ export function useUpdateResume() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: ResumeUpdatePayload }): Promise<Resume> => {
-      const response = await api.patch<Resume>(`${API_BASE_URL}/resumes/${id}`, updates)
+      const response = await api.patch<Resume>(`/resumes/${id}`, updates)
       return response
     },
     onSuccess: () => {
@@ -72,7 +71,7 @@ export function useDeleteResume() {
 
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      await api.delete(`${API_BASE_URL}/resumes/${id}`)
+      await api.delete(`/resumes/${id}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RESUMES_QUERY_KEY })
