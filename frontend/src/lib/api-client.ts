@@ -44,8 +44,10 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   
   // Add API key for development/legacy support
   const apiKey = import.meta.env.VITE_API_KEY
+  console.log('API Client - VITE_API_KEY:', apiKey)
   if (apiKey) {
     headers['X-API-Key'] = apiKey
+    console.log('API Client - Added X-API-Key header:', apiKey)
   }
   
   if (token) {
