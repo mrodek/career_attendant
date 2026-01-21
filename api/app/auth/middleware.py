@@ -60,6 +60,10 @@ class AuthMiddleware:
         
         # Check for API key authentication
         api_key = request.headers.get('X-API-Key')
+        logger.debug(f"Received API key: {api_key}")
+        logger.debug(f"Expected API key: {settings.api_key}")
+        logger.debug(f"API keys match: {api_key == settings.api_key}")
+        
         if api_key and api_key == settings.api_key:
             logger.debug("API key authentication successful")
             request.state.user_id = "api_user"
