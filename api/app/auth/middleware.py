@@ -35,9 +35,9 @@ def is_public_path(path: str) -> bool:
     if path in public_paths:
         return True
     
-    # Check path prefixes
+    # Check path prefixes (but not root "/" which would match everything)
     for public_path in public_paths:
-        if path.startswith(public_path):
+        if public_path != "/" and path.startswith(public_path):
             return True
     
     return False
