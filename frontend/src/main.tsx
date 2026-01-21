@@ -43,8 +43,7 @@ if (PUBLISHABLE_KEY) {
       publishableKey={PUBLISHABLE_KEY}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
-      afterSignInUrl="/"
-      afterSignUpUrl="/"
+      fallbackRedirectUrl="/"
     >
       <AppWithProviders withAuth />
     </ClerkProvider>,
