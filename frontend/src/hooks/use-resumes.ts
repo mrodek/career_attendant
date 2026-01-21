@@ -10,8 +10,8 @@ export function useResumes() {
   return useQuery({
     queryKey: RESUMES_QUERY_KEY,
     queryFn: async (): Promise<Resume[]> => {
-      const response = await api(`${API_BASE_URL}/resumes/`)
-      return response.json()
+      const response = await api.get<Resume[]>(`${API_BASE_URL}/resumes/`)
+      return response
     },
   })
 }
@@ -21,8 +21,8 @@ export function useResume(id: string | null) {
   return useQuery({
     queryKey: [...RESUMES_QUERY_KEY, id],
     queryFn: async (): Promise<Resume> => {
-      const response = await api(`${API_BASE_URL}/resumes/${id}`)
-      return response.json()
+      const response = await api.get<Resume>(`${API_BASE_URL}/resumes/${id}`)
+      return response
     },
     enabled: !!id,
   })
@@ -39,12 +39,11 @@ export function useUploadResume() {
       formData.append('is_primary', String(payload.is_primary ?? false))
       formData.append('file', payload.file)
 
-      const response = await api(`${API_BASE_URL}/resumes/`, {
-        method: 'POST',
-        body: formData,
+      const response = await api.post<Resume>(`${API_BASE_URL}/resumes/`, formData, {
+        headers: {}, // Let browser set Content-Type for FormData
       })
 
-      return response.json()
+      return response
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RESUMES_QUERY_KEY })
@@ -58,12 +57,8 @@ export function useUpdateResume() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: ResumeUpdatePayload }): Promise<Resume> => {
-      const response = await api(`${API_BASE_URL}/resumes/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(updates),
-      })
-
-      return response.json()
+      const response = await api.patch<Resume>(`${API_BASE_URL}/resumes/${id}`, updates)
+      return response
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RESUMES_QUERY_KEY })
@@ -77,9 +72,7 @@ export function useDeleteResume() {
 
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      await api(`${API_BASE_URL}/resumes/${id}`, {
-        method: 'DELETE',
-      })
+      await api.delete(`${API_BASE_URL}/resumes/${id}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RESUMES_QUERY_KEY })
