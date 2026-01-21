@@ -31,6 +31,7 @@ def is_public_path(path: str) -> bool:
         "/openapi.json",
         "/favicon.ico",
         "/static",
+        "/auth",  # Auth pages must be public
     }
     
     # Check exact matches
