@@ -83,7 +83,23 @@ class AuthMiddleware:
             request.state.user_email = "dev@example.com"
             return await call_next(request)
         
-        # Check for API key authentication (development/legacy support)
+        # Extract token from header (JWT authentication priority)
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                # Validate JWT token
+                payload = await validate_jwt_token(token)
+                request.state.user_id = payload.sub
+                request.state.session_id = payload.sid
+                request.state.user_email = payload.email
+                logger.debug(f"JWT authentication successful for user: {payload.sub}")
+                return await call_next(request)
+            except Exception as e:
+                logger.warning(f"JWT validation failed: {e}")
+                # Continue to API key fallback
+        
+        # Check for API key authentication (fallback)
         api_key = request.headers.get('X-API-Key')
         if api_key and api_key == settings.api_key:
             logger.debug("API key authentication successful")
@@ -92,53 +108,58 @@ class AuthMiddleware:
             request.state.user_email = "api@example.com"
             return await call_next(request)
         
-        # Extract token from header
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            logger.warning(f"Auth failed for {request.url.path}: Missing or invalid authorization header")
-            return auth_error_response(
-                status.HTTP_401_UNAUTHORIZED,
-                "Missing or invalid authorization header"
-            )
-        
-        token = auth_header.split(' ')[1]
-        
-        # Try to determine if this is a JWT or session token
-        # JWTs have a specific format (header.payload.signature)
-        # Session tokens are random strings
-        is_jwt = token.count('.') == 2
-        
-        if is_jwt:
-            # Validate as Clerk JWT
-            try:
-                # Get unverified header to find the key ID
-                unverified_header = jwt.get_unverified_header(token)
-                kid = unverified_header.get('kid')
-                
-                if not kid:
-                    return auth_error_response(
-                        status.HTTP_401_UNAUTHORIZED,
-                        "Token missing key ID"
-                    )
-                
-                # Fetch JWKS keys
-                jwks = await get_jwks_keys()
-                if not jwks:
-                    return auth_error_response(
-                        status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        "Unable to fetch JWKS keys"
-                    )
-                
-                # Find the matching key
-                key = next((jwk for jwk in jwks.get('keys', []) if jwk.get('kid') == kid), None)
+        # No valid authentication found
+        logger.warning(f"Auth failed for {request.url.path}: Missing or invalid authorization header")
+        return auth_error_response(
+            status.HTTP_401_UNAUTHORIZED,
+            "Missing or invalid authorization header"
+        )
 
-                # If key is not found, it might be because the JWKS cache is stale.
-                # Force refresh the cache and try again.
-                if not key:
-                    logger.warning(f"Key {kid} not found in cache, refreshing JWKS")
-                    jwks = await get_jwks_keys(force_refresh=True)
-                    if jwks:
-                        key = next((jwk for jwk in jwks.get('keys', []) if jwk.get('kid') == kid), None)
+async def AuthenticationMiddleware(request: Request, call_next):
+    """Main authentication middleware"""
+    # Public paths that don't require authentication
+    if is_public_path(request.url.path):
+        return await call_next(request)
+    
+    # Development mode: bypass authentication if explicitly enabled
+    if settings.dev_mode:
+        logger.warning("⚠️  DEV_MODE enabled - bypassing authentication (NEVER use in production!)")
+        request.state.user_id = "dev_user"
+        request.state.session_id = "dev_session"
+        request.state.user_email = "dev@example.com"
+        return await call_next(request)
+    
+    # Extract token from header (JWT authentication priority)
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        try:
+            # Validate JWT token
+            payload = await validate_jwt_token(token)
+            request.state.user_id = payload.sub
+            request.state.session_id = payload.sid
+            request.state.user_email = payload.email
+            logger.debug(f"JWT authentication successful for user: {payload.sub}")
+            return await call_next(request)
+        except Exception as e:
+            logger.warning(f"JWT validation failed: {e}")
+            # Continue to API key fallback
+    
+    # Check for API key authentication (fallback)
+    api_key = request.headers.get('X-API-Key')
+    if api_key and api_key == settings.api_key:
+        logger.debug("API key authentication successful")
+        request.state.user_id = "api_user"
+        request.state.session_id = "api_session"
+        request.state.user_email = "api@example.com"
+        return await call_next(request)
+    
+    # No valid authentication found
+    logger.warning(f"Auth failed for {request.url.path}: Missing or invalid authorization header")
+    return auth_error_response(
+        status.HTTP_401_UNAUTHORIZED,
+        "Missing or invalid authorization header"
+    )
 
                 if not key:
                     logger.error(f"Unable to find matching key for kid: {kid}")
