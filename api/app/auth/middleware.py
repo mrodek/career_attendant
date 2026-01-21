@@ -46,8 +46,11 @@ class AuthMiddleware:
     """Main authentication middleware - API key authentication"""
     
     async def __call__(self, request: Request, call_next):
+        logger.info(f"🔐 AuthMiddleware called for: {request.url.path}")
+        
         # Public paths that don't require authentication
         if is_public_path(request.url.path):
+            logger.info(f"✅ Public path, bypassing auth: {request.url.path}")
             return await call_next(request)
         
         # Development mode: bypass authentication if explicitly enabled
