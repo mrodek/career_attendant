@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import Settings, get_cors_origins
 from .logger import logger
 from .routers import entries, auth, auth_page, analyze, extract, resumes
-from .auth.middleware import AuthMiddleware
+from .auth.middleware import AuthenticationMiddleware
 from .startup import init_db
 
 # Configure more detailed logging
@@ -51,7 +51,7 @@ app.add_middleware(
 )
 
 # Add authentication middleware
-app.middleware("http")(AuthMiddleware())
+app.middleware("http")(AuthenticationMiddleware())
 
 # Initialize database tables on startup
 @app.on_event("startup")
