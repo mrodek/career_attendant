@@ -31,7 +31,9 @@ def is_public_path(path: str) -> bool:
         "/openapi.json",
         "/favicon.ico",
         "/static",
-        "/auth",  # Auth pages must be public
+        "/auth",  # Auth pages (login, callback) must be public
+        "/api/auth/create-session",  # Session creation endpoint must be public
+        "/api/auth/webhook",  # Clerk webhooks must be public
     }
     
     # Check exact matches
