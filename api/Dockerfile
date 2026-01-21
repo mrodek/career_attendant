@@ -14,6 +14,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY test_simple.py ./
 
 # Create uploads directory for resume storage
 RUN mkdir -p /app/uploads
