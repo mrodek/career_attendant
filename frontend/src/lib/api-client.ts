@@ -37,8 +37,11 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   // Get auth token if available
   const token = getAuthToken ? await getAuthToken() : null
   
+  // Check if body is FormData - don't set Content-Type (browser will set it with boundary)
+  const isFormData = fetchOptions.body instanceof FormData
+  
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(fetchOptions.headers as Record<string, string>),
   }
   
@@ -71,13 +74,25 @@ export const api = {
     request<T>(endpoint, { ...options, method: 'GET' }),
     
   post: <T>(endpoint: string, body: unknown, options?: RequestOptions) =>
-    request<T>(endpoint, { ...options, method: 'POST', body: JSON.stringify(body) }),
+    request<T>(endpoint, { 
+      ...options, 
+      method: 'POST', 
+      body: body instanceof FormData ? body : JSON.stringify(body) 
+    }),
     
   put: <T>(endpoint: string, body: unknown, options?: RequestOptions) =>
-    request<T>(endpoint, { ...options, method: 'PUT', body: JSON.stringify(body) }),
+    request<T>(endpoint, { 
+      ...options, 
+      method: 'PUT', 
+      body: body instanceof FormData ? body : JSON.stringify(body) 
+    }),
     
   patch: <T>(endpoint: string, body: unknown, options?: RequestOptions) =>
-    request<T>(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(body) }),
+    request<T>(endpoint, { 
+      ...options, 
+      method: 'PATCH', 
+      body: body instanceof FormData ? body : JSON.stringify(body) 
+    }),
     
   delete: <T>(endpoint: string, options?: RequestOptions) =>
     request<T>(endpoint, { ...options, method: 'DELETE' }),
