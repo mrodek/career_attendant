@@ -1,6 +1,6 @@
 """
 Authentication middleware for Career Attendant API
-Handles JWT tokens (Clerk), session tokens, and API key authentication
+Handles API key authentication (JWT temporarily disabled)
 """
 
 import logging
@@ -10,7 +10,6 @@ from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
 
 from ..config import settings
-from ..jwt_utils import validate_jwt_token
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ def is_public_path(path: str) -> bool:
     return False
 
 async def AuthenticationMiddleware(request: Request, call_next):
-    """Main authentication middleware - JWT first, API key fallback"""
+    """Main authentication middleware - API key authentication"""
     # Public paths that don't require authentication
     if is_public_path(request.url.path):
         return await call_next(request)
@@ -57,23 +56,7 @@ async def AuthenticationMiddleware(request: Request, call_next):
         request.state.user_email = "dev@example.com"
         return await call_next(request)
     
-    # Extract token from header (JWT authentication priority)
-    auth_header = request.headers.get('Authorization')
-    if auth_header and auth_header.startswith('Bearer '):
-        token = auth_header.split(' ')[1]
-        try:
-            # Validate JWT token
-            payload = await validate_jwt_token(token)
-            request.state.user_id = payload.sub
-            request.state.session_id = payload.sid
-            request.state.user_email = payload.email
-            logger.debug(f"JWT authentication successful for user: {payload.sub}")
-            return await call_next(request)
-        except Exception as e:
-            logger.warning(f"JWT validation failed: {e}")
-            # Continue to API key fallback
-    
-    # Check for API key authentication (fallback)
+    # Check for API key authentication
     api_key = request.headers.get('X-API-Key')
     if api_key and api_key == settings.api_key:
         logger.debug("API key authentication successful")
