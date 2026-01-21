@@ -8,8 +8,6 @@ import App from './App'
 import './index.css'
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
-console.log('All env vars:', import.meta.env)
-console.log('Clerk key:', PUBLISHABLE_KEY)
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,7 +41,8 @@ if (PUBLISHABLE_KEY) {
       publishableKey={PUBLISHABLE_KEY}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
-      fallbackRedirectUrl="/"
+      signInFallbackRedirectUrl="/"
+      signUpFallbackRedirectUrl="/"
     >
       <AppWithProviders withAuth />
     </ClerkProvider>,
