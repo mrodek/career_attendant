@@ -36,3 +36,6 @@ def get_cors_origins(settings: Settings) -> List[str]:
     if origins == "*":
         return ["*"]
     return [o.strip() for o in origins.split(",") if o.strip()]
+
+# Create a global settings instance
+settings = Settings()
