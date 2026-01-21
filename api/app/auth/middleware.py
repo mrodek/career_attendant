@@ -46,6 +46,10 @@ class AuthMiddleware:
     """Main authentication middleware - JWT first, API key fallback"""
     
     async def __call__(self, request: Request, call_next):
+        # Allow OPTIONS requests for CORS preflight (they don't carry auth headers)
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        
         logger.info(f"🔐 AuthMiddleware called for: {request.url.path}")
         
         # Public paths that don't require authentication

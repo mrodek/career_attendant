@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useLayoutEffect } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import { setAuthTokenGetter } from '../lib/api-client'
 
@@ -9,7 +9,9 @@ import { setAuthTokenGetter } from '../lib/api-client'
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const { getToken } = useAuth()
 
-  useEffect(() => {
+  // Use useLayoutEffect to set token getter BEFORE children render
+  // This prevents race conditions where API calls happen before token is available
+  useLayoutEffect(() => {
     // Set the token getter for the API client
     setAuthTokenGetter(async () => {
       try {
